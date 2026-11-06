@@ -1,0 +1,206 @@
+{
+  "base_commit": "5cc8b8511904f39f7743f2d9389706d78cdcc482",
+  "environment": "local Debian 13 managed cloud environment",
+  "github_actions_run": null,
+  "comparison": {
+    "baseline": {
+      "lcov": {
+        "LF": 4742,
+        "LH": 1338,
+        "FNF": 695,
+        "FNH": 169
+      },
+      "profiles": [
+        {
+          "path": "actr-web-44871-7719993643290845336_0.profraw",
+          "bytes": 921816
+        },
+        {
+          "path": "actr-web-44560-7006279839766784301_0.profraw",
+          "bytes": 922704
+        },
+        {
+          "path": "actr-web-44248-5102385027787989521_0.profraw",
+          "bytes": 1035160
+        }
+      ],
+      "raw_profile_versions": [
+        10
+      ],
+      "executed_function_starts": 173
+    },
+    "experiment": {
+      "lcov": {
+        "LF": 4670,
+        "LH": 1293,
+        "FNF": 701,
+        "FNH": 169
+      },
+      "profiles": [
+        {
+          "path": "actr-web-44508-7242662750530097460_0.profraw",
+          "bytes": 996744
+        },
+        {
+          "path": "actr-web-43391-13400585444791943460_0.profraw",
+          "bytes": 1120352
+        },
+        {
+          "path": "actr-web-44233-783217575587465280_0.profraw",
+          "bytes": 1000496
+        }
+      ],
+      "raw_profile_versions": [
+        11
+      ],
+      "executed_function_starts": 173
+    },
+    "shared_executed_function_starts": 173,
+    "equal_execution_counts": 173,
+    "baseline_only_executed_starts": [],
+    "experiment_only_executed_starts": [],
+    "changed_execution_counts": []
+  },
+  "matrix": {
+    "baseline": {
+      "metadata": {
+        "source_commit": "5cc8b8511904f39f7743f2d9389706d78cdcc482",
+        "rust": "rustc 1.96.0-nightly (48cc71ee8 2026-03-31)\nbinary: rustc\ncommit-hash: 48cc71ee88cd0f11217eced958b9930970da998b\ncommit-date: 2026-03-31\nhost: x86_64-unknown-linux-gnu\nrelease: 1.96.0-nightly\nLLVM version: 22.1.2\n",
+        "runner": "wasm-bindgen-test-runner 0.2.126",
+        "cargo_llvm_cov": "cargo-llvm-cov 0.9.1",
+        "chromedriver": "ChromeDriver 156.0.8078.79 (a21ce95c24ce3964416f09ae1862f53f319eb4d0-refs/branch-heads/8078@{#1704})",
+        "dependencies": [
+          {
+            "name": "minicov",
+            "version": "0.3.8",
+            "source": "registry+https://github.com/rust-lang/crates.io-index",
+            "checksum": "4869b6a491569605d66d3952bcdf03df789e5b536e5f0cf7758a7f08a55ae24d",
+            "dependencies": [
+              "cc",
+              "walkdir"
+            ]
+          },
+          {
+            "name": "wasm-bindgen",
+            "version": "0.2.126",
+            "source": "registry+https://github.com/rust-lang/crates.io-index",
+            "checksum": "4b067c0c11094aef6b7a801c1e34a26affafdf3d051dba08456b868789aaf9a4",
+            "dependencies": [
+              "cfg-if",
+              "once_cell",
+              "rustversion",
+              "wasm-bindgen-macro",
+              "wasm-bindgen-shared"
+            ]
+          },
+          {
+            "name": "wasm-bindgen-test",
+            "version": "0.3.76",
+            "source": "registry+https://github.com/rust-lang/crates.io-index",
+            "checksum": "2a0d555ca874445df8d314f94f5c948a4e74e5418f332c89f660a3d8310a96f4",
+            "dependencies": [
+              "async-trait",
+              "cast",
+              "js-sys",
+              "libm",
+              "minicov",
+              "nu-ansi-term",
+              "num-traits",
+              "oorandom",
+              "serde",
+              "serde_json",
+              "wasm-bindgen",
+              "wasm-bindgen-futures",
+              "wasm-bindgen-test-macro",
+              "wasm-bindgen-test-shared"
+            ]
+          }
+        ],
+        "chrome": "Chromium 156.0.8078.79",
+        "lockfile_sha256": "7afeaac43c3edf848db1ba17078afa53f20c82390663139d948af3d506a5f564"
+      },
+      "tests": [
+        "test result: ok. 24 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.03s",
+        "test result: ok. 29 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.02s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.15s"
+      ],
+      "fixture": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 72 filtered out; finished in 23.72s"
+      ],
+      "export_logs": {
+        "html.log": "\n    Finished report saved to <results>/matrix-llvm22-minicov038/html/html\n",
+        "json.log": "\n    Finished report saved to <results>/matrix-llvm22-minicov038/coverage.json\n"
+      }
+    },
+    "experiment": {
+      "metadata": {
+        "source_commit": "5cc8b8511904f39f7743f2d9389706d78cdcc482",
+        "rust": "rustc 1.101.0-nightly (249c1e4e3 2026-11-05)\nbinary: rustc\ncommit-hash: 249c1e4e31111b54ad2483cfd4cea06c7020c653\ncommit-date: 2026-11-05\nhost: x86_64-unknown-linux-gnu\nrelease: 1.101.0-nightly\nLLVM version: 23.1.5\n",
+        "runner": "wasm-bindgen-test-runner 0.2.126",
+        "cargo_llvm_cov": "cargo-llvm-cov 0.9.1",
+        "chromedriver": "ChromeDriver 156.0.8078.79 (a21ce95c24ce3964416f09ae1862f53f319eb4d0-refs/branch-heads/8078@{#1704})",
+        "dependencies": [
+          {
+            "name": "minicov",
+            "version": "0.3.9",
+            "source": "registry+https://github.com/rust-lang/crates.io-index",
+            "checksum": "c3aa3aa12b448ac225b3102217d1ac5cc717908f02722926524b0599c933c7a0",
+            "dependencies": [
+              "cc",
+              "walkdir"
+            ]
+          },
+          {
+            "name": "wasm-bindgen",
+            "version": "0.2.126",
+            "source": "registry+https://github.com/rust-lang/crates.io-index",
+            "checksum": "4b067c0c11094aef6b7a801c1e34a26affafdf3d051dba08456b868789aaf9a4",
+            "dependencies": [
+              "cfg-if",
+              "once_cell",
+              "rustversion",
+              "wasm-bindgen-macro",
+              "wasm-bindgen-shared"
+            ]
+          },
+          {
+            "name": "wasm-bindgen-test",
+            "version": "0.3.76",
+            "source": "registry+https://github.com/rust-lang/crates.io-index",
+            "checksum": "2a0d555ca874445df8d314f94f5c948a4e74e5418f332c89f660a3d8310a96f4",
+            "dependencies": [
+              "async-trait",
+              "cast",
+              "js-sys",
+              "libm",
+              "minicov",
+              "nu-ansi-term",
+              "num-traits",
+              "oorandom",
+              "serde",
+              "serde_json",
+              "wasm-bindgen",
+              "wasm-bindgen-futures",
+              "wasm-bindgen-test-macro",
+              "wasm-bindgen-test-shared"
+            ]
+          }
+        ],
+        "chrome": "Chromium 156.0.8078.79",
+        "lockfile_sha256": "1177d3043a8e366686184bc53b036c65513bd0a0f372751dfd7f49c88026b2df"
+      },
+      "tests": [
+        "test result: ok. 24 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.05s",
+        "test result: ok. 29 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.02s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 filtered out; finished in 0.17s"
+      ],
+      "fixture": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 72 filtered out; finished in 19.97s"
+      ],
+      "export_logs": {
+        "html.log": "\n    Finished report saved to <results>/matrix-llvm23-minicov039/html/html\n",
+        "json.log": "\n    Finished report saved to <results>/matrix-llvm23-minicov039/coverage.json\n"
+      }
+    }
+  }
+}
