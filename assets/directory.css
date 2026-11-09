@@ -91,6 +91,10 @@ a:focus-visible {
   text-decoration: none;
 }
 
+.entry + .entry {
+  margin-top: 0.6rem;
+}
+
 .entry:hover {
   border-color: #5f9fd8;
   background: #f0f7ff;

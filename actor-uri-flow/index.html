@@ -1,0 +1,892 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Actrium | 从 Actor URI 发现、下载并验证 .actr 启动</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Arial, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+      color: #101320;
+      background: #fff;
+    }
+
+    * { box-sizing: border-box; }
+    body, h1, h2, h3, p, pre, ul, dl, dd { margin: 0; }
+    code, pre { font-family: Menlo, Consolas, "Liberation Mono", monospace; }
+
+    .viewport { overflow-x: auto; }
+    .frame {
+      width: 100%;
+      min-width: 1200px;
+      max-width: 1755px;
+      margin-inline: auto;
+      container-type: inline-size;
+    }
+
+    /* One unit corresponds to one pixel on the reference diagram. */
+    .diagram {
+      --u: calc(100cqw / 1755);
+      position: relative;
+      isolation: isolate;
+      aspect-ratio: 1755 / 896;
+      font-size: calc(14 * var(--u));
+      line-height: 1.26;
+      background: #fff;
+    }
+    .placed {
+      position: absolute;
+      left: calc(var(--x) * var(--u));
+      top: calc(var(--y) * var(--u));
+      width: calc(var(--w) * var(--u));
+      height: calc(var(--h) * var(--u));
+    }
+
+    .symbols { position: absolute; width: 0; height: 0; overflow: hidden; }
+    .icon {
+      flex: none;
+      width: calc(var(--size, 36) * var(--u));
+      height: calc(var(--size, 36) * var(--u));
+      color: var(--accent, #007cff);
+    }
+    .wires {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    .masthead {
+      display: flex;
+      align-items: center;
+      gap: calc(17 * var(--u));
+    }
+    .masthead h1 {
+      color: #080e2b;
+      font-size: calc(32 * var(--u));
+      line-height: 1.16;
+      letter-spacing: calc(-.4 * var(--u));
+      font-weight: 800;
+    }
+    .masthead p {
+      margin-top: calc(4 * var(--u));
+      color: #101791;
+      font-size: calc(18 * var(--u));
+      font-weight: 700;
+    }
+
+    .blue {
+      --accent: #006fff;
+      --edge: #85c2ff;
+      --light: #f0f8ff;
+      --wash: #dfedfc;
+      --header: #c9def9;
+    }
+    .green {
+      --accent: #078624;
+      --edge: #89d49c;
+      --light: #f2fcf4;
+      --wash: #d9f6e2;
+      --header: #d7f4e0;
+    }
+    .purple {
+      --accent: #882ffc;
+      --edge: #bb8aff;
+      --light: #fcf7ff;
+      --wash: #efe1ff;
+      --header: #e7d4fc;
+    }
+    .red {
+      --accent: #ef120d;
+      --edge: #ff7677;
+      --light: #fff8f8;
+      --wash: #ffdfdf;
+    }
+    .slate {
+      --accent: #005cbe;
+      --light: #f0f3f9;
+      --wash: #e3e8f2;
+    }
+
+    .panel, .chip {
+      border: calc(1 * var(--u)) solid var(--edge);
+      background: linear-gradient(145deg, var(--light), var(--wash));
+      border-radius: calc(12 * var(--u));
+    }
+    .role, .response, .callout, .result, .chip {
+      box-shadow: 0 calc(2 * var(--u)) calc(3 * var(--u)) #21355b29;
+    }
+    .role {
+      display: flex;
+      align-items: center;
+      gap: calc(16 * var(--u));
+      padding-inline: calc(18 * var(--u));
+    }
+    .role h2 {
+      font-size: calc(var(--role-size, 20) * var(--u));
+      letter-spacing: calc(-.37 * var(--u));
+      white-space: nowrap;
+    }
+    .role p {
+      margin-top: calc(4 * var(--u));
+      font-size: calc(var(--role-body-size, 13) * var(--u));
+      letter-spacing: calc(-.22 * var(--u));
+      white-space: nowrap;
+    }
+
+    .lane {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: calc(19 * var(--u));
+      border-radius: calc(11 * var(--u));
+      background: linear-gradient(155deg, var(--header, var(--light)), var(--wash));
+      border: calc(1 * var(--u)) solid #ffffffa8;
+    }
+    .lane h2 {
+      color: #091533;
+      font-size: calc(var(--lane-size, 20) * var(--u));
+      line-height: 1.15;
+      letter-spacing: calc(-.44 * var(--u));
+      white-space: nowrap;
+    }
+    .lane p {
+      margin-top: calc(4 * var(--u));
+      color: #091533;
+      font-size: calc(13 * var(--u));
+      white-space: nowrap;
+    }
+    .domain { color: #0c26d7; }
+
+    .phase {
+      display: flex;
+      align-items: center;
+      gap: calc(13 * var(--u));
+      padding-inline: calc(17 * var(--u));
+      border-radius: calc(13 * var(--u));
+      background: linear-gradient(145deg, var(--light), var(--wash));
+    }
+    .phase h3 {
+      font-size: calc(19 * var(--u));
+      font-weight: 800;
+      line-height: 1.2;
+    }
+    .phase p {
+      margin-top: calc(4 * var(--u));
+      font-size: calc(13 * var(--u));
+      white-space: nowrap;
+    }
+
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: calc(14 * var(--u));
+      padding: calc(2 * var(--u)) calc(12 * var(--u)) calc(3 * var(--u));
+    }
+    .step-number {
+      display: grid;
+      flex: none;
+      place-items: center;
+      width: calc(31 * var(--u));
+      height: calc(31 * var(--u));
+      border-radius: 50%;
+      color: #fff;
+      background: radial-gradient(circle at 26% 14%, #7eeaff, #09a7ec 32%, #0078ff 63%, #004dc7);
+      font-size: calc(22 * var(--u));
+      font-weight: 800;
+      line-height: 1;
+    }
+    .step-body { min-width: 0; }
+    .step h3 {
+      font-size: calc(17 * var(--u));
+      font-weight: 800;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+    .step ul {
+      padding-inline-start: calc(18 * var(--u));
+      font-size: calc(13 * var(--u));
+      line-height: 1.25;
+      white-space: nowrap;
+    }
+    .step .detail { display: block; }
+    .step .chip { margin: calc(4 * var(--u)) 0 0; }
+    .step .uri { margin-top: calc(2 * var(--u)); }
+    .step .compact {
+      margin-top: calc(3 * var(--u));
+      font-size: calc(12 * var(--u));
+      line-height: 1.28;
+      white-space: nowrap;
+    }
+    .compact .detail { margin-inline-start: calc(22 * var(--u)); }
+    .sequence {
+      display: inline-block;
+      width: calc(17 * var(--u));
+      font-weight: 700;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: calc(9 * var(--u));
+      min-height: calc(24 * var(--u));
+      padding-inline: calc(3 * var(--u)) calc(8 * var(--u));
+      border-radius: calc(7 * var(--u));
+      background: linear-gradient(150deg, #fff, var(--light));
+      white-space: nowrap;
+    }
+    .chip code, .uri code {
+      font-size: calc(var(--url-size, 13) * var(--u));
+      letter-spacing: calc(-.46 * var(--u));
+      font-weight: 700;
+    }
+    .chip.uri {
+      min-height: calc(20 * var(--u));
+      padding-inline: calc(5 * var(--u));
+    }
+    .method {
+      display: inline-block;
+      padding: calc(3 * var(--u)) calc(6 * var(--u));
+      border-radius: calc(6 * var(--u));
+      background: #007ff5;
+      color: #fff;
+      font: 700 calc(14 * var(--u)) / 1.15 Arial, sans-serif;
+      vertical-align: baseline;
+    }
+    .method.small {
+      padding: calc(1 * var(--u)) calc(4 * var(--u));
+      border-radius: calc(4 * var(--u));
+      font-size: calc(10 * var(--u));
+    }
+    .placed.chip { justify-content: flex-start; }
+    .request-marker { display: grid; place-items: center; }
+    .compact code {
+      font-size: calc(11.5 * var(--u));
+      letter-spacing: calc(-.5 * var(--u));
+    }
+
+    .response {
+      padding: calc(4 * var(--u)) calc(10 * var(--u));
+    }
+    .response h3 {
+      font: 800 calc(12.5 * var(--u)) / 1.16 Menlo, Consolas, monospace;
+      letter-spacing: calc(-.48 * var(--u));
+    }
+    .response pre {
+      font-size: calc(10.6 * var(--u));
+      font-weight: 600;
+      line-height: 1.02;
+      letter-spacing: calc(-.24 * var(--u));
+    }
+    .response.profile { padding: calc(1 * var(--u)) calc(12 * var(--u)); }
+    .response.profile pre {
+      font-size: calc(10.35 * var(--u));
+      line-height: calc(9.3 * var(--u));
+    }
+
+    .callout, .result {
+      display: flex;
+      align-items: center;
+      gap: calc(9 * var(--u));
+      padding-inline: calc(10 * var(--u));
+    }
+    .callout strong, .result strong { display: block; }
+    .callout strong {
+      font-size: calc(var(--label-size, 15) * var(--u));
+      white-space: nowrap;
+    }
+    .callout .accent { color: var(--accent); }
+    .callout p {
+      font-size: calc(var(--callout-size, 13) * var(--u));
+      white-space: nowrap;
+    }
+    .result h3 {
+      font-size: calc(13.5 * var(--u));
+      line-height: 1.18;
+      white-space: nowrap;
+    }
+    .result p {
+      font-size: calc(12.6 * var(--u));
+      white-space: nowrap;
+    }
+    .result .status { color: #2416dc; }
+    .result code { letter-spacing: calc(-.46 * var(--u)); }
+    .result .snippet { font-size: calc(10.5 * var(--u)); }
+    .decision {
+      display: grid;
+      place-items: center;
+      text-align: center;
+      font-weight: 800;
+      font-size: calc(13 * var(--u));
+    }
+    .branch {
+      text-align: center;
+      font-size: calc(16 * var(--u));
+      font-weight: 800;
+      color: var(--accent);
+    }
+    .outcome {
+      color: #09163d;
+      font-size: calc(16 * var(--u));
+      font-weight: 800;
+      line-height: 1.15;
+    }
+
+    .footer {
+      display: flex;
+      align-items: stretch;
+      border-radius: calc(12 * var(--u));
+    }
+    .footer-heading {
+      display: flex;
+      flex: 0 0 calc(var(--label-width) * var(--u));
+      min-width: 0;
+      align-items: flex-start;
+      gap: calc(10 * var(--u));
+      padding: calc(11 * var(--u)) calc(11 * var(--u));
+      color: #071894;
+    }
+    .footer-heading h2 {
+      font-size: calc(15 * var(--u));
+      line-height: 1.25;
+      white-space: nowrap;
+    }
+    .footer-heading small { font-size: calc(12 * var(--u)); }
+    .footer-details {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      align-items: center;
+      border-inline-start: calc(1 * var(--u)) solid #bddfff;
+      border-radius: calc(12 * var(--u));
+      background: #ffffff74;
+    }
+    .paths {
+      width: 100%;
+      padding: calc(5 * var(--u)) calc(10 * var(--u));
+      font-size: calc(11.55 * var(--u));
+      line-height: 1.48;
+      white-space: nowrap;
+    }
+    .paths > div {
+      display: grid;
+      grid-template-columns: calc(96 * var(--u)) 1fr;
+      align-items: baseline;
+    }
+    .paths dt, .fields dt { font-weight: 800; }
+    .paths dt::before, .fields dt::before { content: "•"; margin-right: .55em; }
+    .paths code { letter-spacing: calc(-.48 * var(--u)); }
+    .paths small { font-size: calc(10.3 * var(--u)); }
+    .uri-example {
+      padding: calc(1 * var(--u)) calc(4 * var(--u));
+      border: calc(1 * var(--u)) solid #b38aff;
+      border-radius: calc(5 * var(--u));
+      background: #fff;
+      box-shadow: 0 calc(1 * var(--u)) calc(2 * var(--u)) #51467b42;
+      font-weight: 700;
+    }
+    .fields {
+      display: grid;
+      grid-template-columns: minmax(0, 1.16fr) minmax(0, 1fr);
+      gap: calc(9 * var(--u));
+      width: 100%;
+      padding: calc(4 * var(--u)) calc(9 * var(--u));
+      font-size: calc(12 * var(--u));
+      line-height: 1.82;
+    }
+    .fields dl > div { display: flex; gap: calc(9 * var(--u)); white-space: nowrap; }
+    .legend {
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding: calc(7 * var(--u)) calc(10 * var(--u));
+      background: #f3f7fc;
+    }
+    .legend-title, .legend-note, .swatches, .swatches li {
+      display: flex;
+      align-items: center;
+    }
+    .legend-title, .legend-note { gap: calc(7 * var(--u)); }
+    .legend-title { color: #081983; }
+    .legend-title h2 { font-size: calc(15 * var(--u)); }
+    .swatches {
+      gap: calc(11 * var(--u));
+      list-style: none;
+      padding-left: calc(27 * var(--u));
+      font-size: calc(11 * var(--u));
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .swatches li { gap: calc(5 * var(--u)); }
+    .swatch {
+      width: calc(25 * var(--u));
+      height: calc(19 * var(--u));
+      border: calc(1 * var(--u)) solid var(--edge);
+      border-radius: calc(5 * var(--u));
+      background: linear-gradient(145deg, var(--light), var(--wash));
+      box-shadow: 0 calc(1 * var(--u)) calc(2 * var(--u)) #2340692b;
+    }
+    .swatch.host { background: linear-gradient(145deg, #f0f9ff, #caeaff); }
+    .legend-note {
+      margin-left: calc(26 * var(--u));
+      font-size: calc(12.5 * var(--u));
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    @page { size: landscape; margin: 7mm; }
+    @media print {
+      .viewport { overflow: visible; }
+      .frame { min-width: 0; max-width: none; }
+      .diagram { break-inside: avoid; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <linearGradient id="logo-top" x2="1" y2="1">
+        <stop stop-color="#22e0ff"/>
+        <stop offset="1" stop-color="#0475f7"/>
+      </linearGradient>
+      <linearGradient id="logo-left" x2=".8" y2="1">
+        <stop stop-color="#00d6fd"/>
+        <stop offset="1" stop-color="#007bc9"/>
+      </linearGradient>
+      <linearGradient id="logo-right" x2="1" y2="1">
+        <stop stop-color="#2489ff"/>
+        <stop offset="1" stop-color="#0038db"/>
+      </linearGradient>
+
+      <symbol id="icon-logo" viewBox="0 0 56 58">
+        <path d="M28 1 55 15 28 30 1 15Z" fill="url(#logo-top)"/>
+        <path d="M1 15 28 30V57L1 43Z" fill="url(#logo-left)"/>
+        <path d="M55 15 28 30V57L55 43Z" fill="url(#logo-right)"/>
+        <path d="M1 15 28 30 55 15M28 30V57" fill="none" stroke="#f2fbff" stroke-width="1.2"/>
+        <path d="M28 18 36 23V31L28 36 20 31V23Z M28 36V43 M28 18V12 M20 23 16 21 M36 23 41 20"
+              fill="none" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+        <path d="m25 27 2 2 4-4" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </symbol>
+      <symbol id="icon-package" viewBox="0 0 32 32">
+        <path d="m16 2.5 12.5 7.2v13.1L16 30 3.5 22.8V9.7Z M3.5 9.7 16 17l12.5-7.3 M16 17v13"
+              fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </symbol>
+      <symbol id="icon-shield" viewBox="0 0 32 32">
+        <path d="M16 3c3 3 8 4.5 12 5v7c0 6.8-4.5 11.7-12 14-7.5-2.3-12-7.2-12-14V8c4-.5 9-2 12-5Z"
+              fill="none" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/>
+        <path d="m11.5 15.8 3 3 6-6.4" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </symbol>
+      <symbol id="icon-cloud" viewBox="0 0 36 32">
+        <path d="M8 26a6.5 6.5 0 0 1 0-13h2a9 9 0 0 1 17.5 1.5A5.8 5.8 0 0 1 28.5 26H8Z"
+              fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </symbol>
+      <symbol id="icon-laptop" viewBox="0 0 38 32">
+        <rect x="6" y="3" width="26" height="19" rx="2.5" fill="none" stroke="currentColor" stroke-width="3"/>
+        <path d="m6 22-4 4v2c0 .6.5 1 1 1h32c.5 0 1-.4 1-1v-2l-4-4Z"
+              fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </symbol>
+      <symbol id="icon-server" viewBox="0 0 32 32">
+        <g fill="none" stroke="currentColor" stroke-width="3">
+          <rect x="3" y="3" width="26" height="7" rx="2.2"/>
+          <rect x="3" y="12.5" width="26" height="7" rx="2.2"/>
+          <rect x="3" y="22" width="26" height="7" rx="2.2"/>
+        </g>
+        <g fill="currentColor">
+          <circle cx="8" cy="6.5" r="1.1"/>
+          <circle cx="8" cy="16" r="1.1"/>
+          <circle cx="8" cy="25.5" r="1.1"/>
+        </g>
+      </symbol>
+      <symbol id="icon-link" viewBox="0 0 32 32">
+        <path d="m14 9 4.8-4.8a5.9 5.9 0 0 1 8.4 8.4l-4.8 4.8 M18 23l-4.8 4.8a5.9 5.9 0 0 1-8.4-8.4l4.8-4.8 M11 21 21 11"
+              fill="none" stroke="currentColor" stroke-width="3.1" stroke-linecap="round"/>
+      </symbol>
+      <symbol id="icon-search" viewBox="0 0 32 32">
+        <circle cx="13.4" cy="13.4" r="9.7" fill="none" stroke="currentColor" stroke-width="3.3"/>
+        <path d="m20.5 20.5 8 8" fill="none" stroke="currentColor" stroke-width="3.3" stroke-linecap="round"/>
+      </symbol>
+      <symbol id="icon-file" viewBox="0 0 32 32">
+        <path d="M6 3h12l7 7v18H6Z M18 3v8h7 M10 16h11 M10 21h11"
+              fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </symbol>
+      <symbol id="icon-play" viewBox="0 0 32 32">
+        <path d="M7 3.5 28 16 7 28.5Z" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linejoin="round"/>
+      </symbol>
+      <symbol id="icon-play-filled" viewBox="0 0 32 32">
+        <path d="M6 4a2 2 0 0 1 3-1.7l21 12a2 2 0 0 1 0 3.4l-21 12A2 2 0 0 1 6 28Z" fill="currentColor"/>
+      </symbol>
+      <symbol id="icon-check" viewBox="0 0 32 32">
+        <circle cx="16" cy="16" r="14" fill="currentColor"/>
+        <path d="m9.5 16 4.3 4.3 8.7-9.1" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </symbol>
+      <symbol id="icon-close" viewBox="0 0 32 32">
+        <circle cx="16" cy="16" r="14" fill="currentColor"/>
+        <path d="m11 11 10 10m0-10L11 21" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"/>
+      </symbol>
+      <symbol id="icon-database" viewBox="0 0 32 32">
+        <path d="M3 7h26v18c0 3-6 5-13 5S3 28 3 25Z" fill="currentColor"/>
+        <ellipse cx="16" cy="7" rx="13" ry="4.8" fill="currentColor" stroke="#fff" stroke-width="1.3"/>
+        <path d="M3 13c0 3 6 5 13 5s13-2 13-5M3 19c0 3 6 5 13 5s13-2 13-5" fill="none" stroke="#fff" stroke-width="1.3"/>
+      </symbol>
+      <symbol id="icon-info" viewBox="0 0 32 32">
+        <circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" stroke-width="3.8"/>
+        <circle cx="16" cy="10" r="2" fill="currentColor"/>
+        <path d="M16 15v8" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>
+      </symbol>
+      <symbol id="icon-lock" viewBox="0 0 32 32">
+        <path d="M10 13V8a6 6 0 1 1 12 0v5M6 13h20v16H6Z M16 19v4"
+              fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <div class="viewport">
+    <div class="frame">
+      <main class="diagram" aria-labelledby="diagram-title">
+        <svg class="wires" viewBox="0 0 1755 896" aria-hidden="true">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9.2" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0 0 10 5 0 10Z" fill="context-stroke"/>
+            </marker>
+          </defs>
+          <g fill="none" stroke="#d9e4f8" stroke-width="1.2">
+            <rect x="3" y="222" width="1747" height="568" rx="11"/>
+            <path d="M242 223v567M675 223v567M1027 223v567M1428 223v567 M3 317h1747M3 411h1747M3 536h1747M3 632h1747M3 713h1747"/>
+          </g>
+          <g fill="none" stroke="#007bff" stroke-width="2.3" marker-end="url(#arrow)">
+            <path d="m700 307-23 26"/>
+            <path d="M725 365h-48"/>
+            <path d="M677 456h256"/>
+          </g>
+          <g fill="none" stroke-width="2.3">
+            <path d="M680 559h765" stroke="#7c2eff" marker-end="url(#arrow)"/>
+            <path d="M778 602H684" stroke="#b474fc" marker-end="url(#arrow)"/>
+            <path d="M778 602h667" stroke="#7c2eff" marker-end="url(#arrow)"/>
+          </g>
+          <path d="m636 666 72-34 72 34-72 35Z" fill="#ffedb9" stroke="#eeb11b"/>
+          <path d="M779 666h64" fill="none" stroke="#f21511" stroke-width="2.3" marker-end="url(#arrow)"/>
+          <g fill="none" stroke="#0a841b" stroke-width="2.3" marker-end="url(#arrow)">
+            <path d="M708 701v37"/>
+            <path d="M681 748h360"/>
+            <path d="M1385 746h60"/>
+          </g>
+        </svg>
+
+        <header class="masthead placed" style="--x: 19; --y: 3; --w: 1728; --h: 64">
+          <svg class="icon" style="--size: 57" aria-hidden="true"><use href="#icon-logo"/></svg>
+          <div>
+            <h1 id="diagram-title">Actrium | 从 Actor URI 发现、下载并验证 .actr 启动（方案 A：Realm 自行托管 Realm Profile）</h1>
+            <p>基于 GitHub actrium/actrium 的协议设计（v1）</p>
+          </div>
+        </header>
+
+        <section aria-label="角色">
+          <article class="role panel purple placed" style="--x: 3; --y: 85; --w: 564; --h: 69">
+            <svg class="icon" style="--size: 42" aria-hidden="true"><use href="#icon-package"/></svg>
+            <div>
+              <h2>Publisher（发布者）— publisher.example</h2>
+              <p>提供 Package（.actr）发布、版本管理与签名公钥，供客户端下载与完整性验证。</p>
+            </div>
+          </article>
+          <article class="role panel blue placed" style="--x: 578; --y: 85; --w: 541; --h: 69; --role-body-size: 11.65">
+            <svg class="icon" style="--size: 39" aria-hidden="true"><use href="#icon-shield"/></svg>
+            <div>
+              <h2>Realm（领域）— realm.example</h2>
+              <p>作为命名空间与信任域，提供 Authority Discovery（.well-known/actr）与 Realm 服务入口。</p>
+            </div>
+          </article>
+          <article class="role panel green placed" style="--x: 1131; --y: 85; --w: 619; --h: 69; --role-size: 17">
+            <svg class="icon" style="--size: 42" aria-hidden="true"><use href="#icon-cloud"/></svg>
+            <div>
+              <h2>Realm Infra Provider（领域基础设施）— realm-infra-provider.example</h2>
+              <p>托管并提供 Issuer、Signaling、TURN 等运行时服务能力。</p>
+            </div>
+          </article>
+        </section>
+
+        <section aria-label="泳道">
+          <div class="lane slate placed" style="--x: 3; --y: 171; --w: 239; --h: 57"><h2>阶段（流程）</h2></div>
+          <div class="lane blue placed" style="--x: 243; --y: 171; --w: 432; --h: 57">
+            <svg class="icon" style="--size: 43" aria-hidden="true"><use href="#icon-laptop"/></svg>
+            <div>
+              <h2>Actr Host / 客户端</h2>
+              <p>（Actr 运行时：解析、验证、加载与启动）</p>
+            </div>
+          </div>
+          <div class="lane blue placed" style="--x: 675; --y: 171; --w: 352; --h: 57">
+            <svg class="icon" style="--size: 39" aria-hidden="true"><use href="#icon-shield"/></svg>
+            <div>
+              <h2>Realm: <span class="domain">realm.example</span></h2>
+              <p>（域名 / 信任 / Authority Discovery）</p>
+            </div>
+          </div>
+          <div class="lane green placed" style="--x: 1027; --y: 171; --w: 401; --h: 57; --lane-size: 15">
+            <svg class="icon" style="--size: 37" aria-hidden="true"><use href="#icon-server"/></svg>
+            <div>
+              <h2>Realm Infra Provider: realm-infra-provider.example</h2>
+              <p>（Realm Profile 托管 / Issuer / Signaling / TURN）</p>
+            </div>
+          </div>
+          <div class="lane purple placed" style="--x: 1428; --y: 171; --w: 322; --h: 57; --lane-size: 18">
+            <svg class="icon" style="--size: 39" aria-hidden="true"><use href="#icon-package"/></svg>
+            <div>
+              <h2>Publisher: <span class="domain">publisher.example</span></h2>
+              <p>（Package 发布 / 签名公钥 / 版本管理）</p>
+            </div>
+          </div>
+        </section>
+
+        <section aria-labelledby="phase-uri">
+          <div class="phase slate placed" style="--x: 3; --y: 230; --w: 238; --h: 72">
+            <svg class="icon" aria-hidden="true"><use href="#icon-link"/></svg>
+            <div>
+              <h3 id="phase-uri">① URI 解析</h3>
+              <p>定位 Realm 与 Actor</p>
+            </div>
+          </div>
+          <article class="step panel blue placed" style="--x: 243; --y: 228; --w: 432; --h: 89">
+            <span class="step-number" aria-hidden="true">1</span>
+            <div class="step-body">
+              <h3>用户打开 Actor URI:</h3>
+              <span class="chip uri"><code>actr://realm.example/k7m2q9xh</code></span>
+              <ul>
+                <li>解析得到：Realm ID = <code>k7m2q9xh</code></li>
+                <li>当前领域（Realm）= <code>k7m2q9xh@realm.example</code></li>
+              </ul>
+            </div>
+          </article>
+        </section>
+
+        <section aria-labelledby="phase-discovery">
+          <div class="phase slate placed" style="--x: 3; --y: 321; --w: 238; --h: 71">
+            <svg class="icon" aria-hidden="true"><use href="#icon-search"/></svg>
+            <div>
+              <h3 id="phase-discovery">② Realm 发现</h3>
+              <p>获取 Realm 的 Authority 信息</p>
+            </div>
+          </div>
+          <article class="step panel blue placed" style="--x: 243; --y: 319; --w: 432; --h: 88; padding-top: calc(6 * var(--u))">
+            <span class="step-number" aria-hidden="true">2</span>
+            <div class="step-body">
+              <h3>获取 Authority Descriptor:</h3>
+              <span class="chip"><span class="method">GET</span><code>https://realm.example/.well-known/actr</code></span>
+            </div>
+          </article>
+          <div class="chip blue placed" style="--x: 689; --y: 293; --w: 329; --h: 24; --url-size: 12.4">
+            <span class="method">GET</span><code>https://realm.example/.well-known/actr</code>
+          </div>
+          <article class="response panel blue placed" style="--x: 725; --y: 321; --w: 454; --h: 109">
+            <h3>200 OK (Authority Descriptor)</h3>
+            <pre><code>{
+  "authority": "actr://realm.example",
+  "services": {
+    {"rel": "realms", "href": "https://realm.example/realm",
+     "protocol": "actr-realm-profile/1"
+  },
+  "realm_signing_keys": { ... }
+}</code></pre>
+          </article>
+          <aside class="callout panel green placed" style="--x: 1192; --y: 351; --w: 230; --h: 53; --label-size: 13.5; --callout-size: 12.2">
+            <svg class="icon" style="--size: 23" aria-hidden="true"><use href="#icon-check"/></svg>
+            <div>
+              <strong>使用 realm_signing_keys</strong>
+              <p>验证后续 Realm Profile 的签名</p>
+            </div>
+          </aside>
+        </section>
+
+        <section aria-labelledby="phase-profile">
+          <div class="phase slate placed" style="--x: 3; --y: 411; --w: 238; --h: 70">
+            <svg class="icon" aria-hidden="true"><use href="#icon-file"/></svg>
+            <div>
+              <h3 id="phase-profile">③ Profile 定位</h3>
+              <p>获取 Realm Profile</p>
+            </div>
+          </div>
+          <article class="step panel blue placed" style="--x: 243; --y: 411; --w: 432; --h: 124; padding-top: calc(5 * var(--u))">
+            <span class="step-number" aria-hidden="true">3</span>
+            <div class="step-body">
+              <h3>获取 Realm Profile:</h3>
+              <span class="chip"><span class="method">GET</span><code>https://realm.example/realm/k7m2q9xh</code></span>
+            </div>
+          </article>
+          <div class="request-marker placed" style="--x: 770; --y: 444; --w: 42; --h: 24"><span class="method">GET</span></div>
+          <article class="response profile panel green placed" style="--x: 941; --y: 438; --w: 481; --h: 103">
+            <h3>200 OK (Realm Profile, 已签名)</h3>
+            <pre><code>{
+  "provider": "realm-infra-provider.example",
+  "package": {
+    "href": "https://publisher.example/packages/demo-1.0.0.actr", ... },
+  "type": "application/actr",
+  "issuer": "https://realm-infra-provider.example/issuer",
+  "signaling": "wss://...",
+  "turn": "turns://..."
+}</code></pre>
+          </article>
+        </section>
+
+        <section aria-labelledby="phase-package">
+          <div class="phase slate placed" style="--x: 3; --y: 540; --w: 238; --h: 73">
+            <svg class="icon" aria-hidden="true"><use href="#icon-package"/></svg>
+            <div>
+              <h3 id="phase-package">④ Package 获取</h3>
+              <p>下载 .actr 与发布者公钥</p>
+            </div>
+          </div>
+          <article class="step panel blue placed" style="--x: 243; --y: 537; --w: 432; --h: 94">
+            <span class="step-number" aria-hidden="true">4</span>
+            <div class="step-body">
+              <h3>获取发布者公钥并下载包:</h3>
+              <div class="compact">
+                <p><span class="sequence">①</span><span class="method small">GET</span> <code>https://publisher.example/.well-known/actr</code></p>
+                <p class="detail">（获取 <code>signing_keys</code>）</p>
+                <p><span class="sequence">②</span><span class="method small">GET</span> <code>https://publisher.example/packages/demo-1.0.0.actr</code></p>
+                <p class="detail">（下载 .actr）</p>
+              </div>
+            </div>
+          </article>
+          <div class="chip purple placed" style="--x: 778; --y: 547; --w: 371; --h: 24">
+            <span class="method">GET</span><code>https://publisher.example/.well-known/actr</code>
+          </div>
+          <article class="result panel purple placed" style="--x: 1449; --y: 535; --w: 301; --h: 46">
+            <svg class="icon" style="--size: 31" aria-hidden="true"><use href="#icon-file"/></svg>
+            <div>
+              <h3><code class="status">200 OK</code> (Publisher Profile)</h3>
+              <p class="snippet"><code>{ "signing_keys": ["ed25519:..."], ... }</code></p>
+            </div>
+          </article>
+          <div class="chip purple placed" style="--x: 778; --y: 590; --w: 424; --h: 24; --url-size: 12.7">
+            <span class="method">GET</span><code>https://publisher.example/packages/demo-1.0.0.actr</code>
+          </div>
+          <article class="result panel purple placed" style="--x: 1449; --y: 582; --w: 301; --h: 46">
+            <svg class="icon" style="--size: 31" aria-hidden="true"><use href="#icon-package"/></svg>
+            <div>
+              <h3><code class="status">200 OK</code> (.actr)</h3>
+              <p><code>demo-1.0.0.actr</code>（二进制包）</p>
+            </div>
+          </article>
+        </section>
+
+        <section aria-labelledby="phase-validation">
+          <div class="phase slate placed" style="--x: 3; --y: 634; --w: 238; --h: 70">
+            <svg class="icon" aria-hidden="true"><use href="#icon-shield"/></svg>
+            <div>
+              <h3 id="phase-validation">⑤ 安全校验</h3>
+              <p>验证签名、完整性与类型</p>
+            </div>
+          </div>
+          <article class="step panel blue placed" style="--x: 243; --y: 633; --w: 377; --h: 80">
+            <span class="step-number" aria-hidden="true">5</span>
+            <div class="step-body">
+              <h3>校验 .actr:</h3>
+              <ul>
+                <li>校验 SHA-256（与 Profile 中一致）</li>
+                <li>验证 Ed25519 签名（使用 Publisher 公钥）</li>
+                <li>校验类型与兼容性（Actor Type / ABI / Manifest）</li>
+              </ul>
+            </div>
+          </article>
+          <p class="decision placed" style="--x: 636; --y: 632; --w: 144; --h: 69">验证是否通过？</p>
+          <span class="branch red placed" style="--x: 793; --y: 637; --w: 30; --h: 20">否</span>
+          <aside class="callout panel red placed" style="--x: 847; --y: 640; --w: 279; --h: 52; --callout-size: 12.1">
+            <svg class="icon" style="--size: 30" aria-hidden="true"><use href="#icon-close"/></svg>
+            <div>
+              <strong class="accent">拒绝启动</strong>
+              <p>（签名不符 / 完整性失败 / 类型不匹配）</p>
+            </div>
+          </aside>
+          <span class="branch green placed" style="--x: 720; --y: 701; --w: 30; --h: 20">是</span>
+        </section>
+
+        <section aria-labelledby="phase-launch">
+          <div class="phase slate placed" style="--x: 3; --y: 719; --w: 238; --h: 66">
+            <svg class="icon" style="--size: 42" aria-hidden="true"><use href="#icon-play"/></svg>
+            <h3 id="phase-launch">⑥ 启动与连接</h3>
+          </div>
+          <article class="step panel green placed" style="--x: 243; --y: 716; --w: 435; --h: 72">
+            <span class="step-number" aria-hidden="true">6</span>
+            <div class="step-body">
+              <h3>启动 Keel Guest / 启动或连接 Service:</h3>
+              <ul>
+                <li>加载 Keel Guest / 运行 .actr</li>
+                <li>基于 Realm Profile 进行成员授权与运行时连接<span class="detail">（Issuer 认证、Signaling 建立连接、TURN 中继等）</span></li>
+              </ul>
+            </div>
+          </article>
+          <aside class="callout panel green placed" style="--x: 1044; --y: 716; --w: 340; --h: 69; --label-size: 13.6; padding-inline: calc(16 * var(--u))">
+            <svg class="icon" style="--size: 37" aria-hidden="true"><use href="#icon-server"/></svg>
+            <div>
+              <strong>向 Realm Infra Provider 完成授权与连接</strong>
+              <p>（获取访问令牌、建立会话 / 通道）</p>
+            </div>
+          </aside>
+          <aside class="callout panel blue placed" style="--x: 1449; --y: 716; --w: 295; --h: 69; padding-inline: calc(15 * var(--u))">
+            <svg class="icon" style="--size: 34" aria-hidden="true"><use href="#icon-play-filled"/></svg>
+            <div class="outcome">
+              <strong>启动目标 Actor:</strong>
+              <strong>应用进入运行状态</strong>
+              <span>（界面 / 服务就绪）</span>
+            </div>
+          </aside>
+        </section>
+
+        <footer aria-label="路径、字段和图例">
+          <section class="footer panel blue placed" style="--x: 3; --y: 804; --w: 640; --h: 85; --label-width: 178">
+            <div class="footer-heading">
+              <svg class="icon" style="--size: 33" aria-hidden="true"><use href="#icon-database"/></svg>
+              <h2>关键数据与路径<br>（示例）</h2>
+            </div>
+            <div class="footer-details">
+              <dl class="paths">
+                <div><dt>Actor URI:</dt><dd><code class="uri-example">actr://realm.example/k7m2q9xh</code></dd></div>
+                <div><dt>发现入口:</dt><dd><code>https://realm.example/.well-known/actr</code> <small>(Authority Descriptor)</small></dd></div>
+                <div><dt>Realm Profile:</dt><dd><code>https://realm.example/realm/k7m2q9xh</code></dd></div>
+                <div><dt>Package:</dt><dd><code>https://publisher.example/packages/demo-1.0.0.actr</code></dd></div>
+              </dl>
+            </div>
+          </section>
+          <section class="footer panel blue placed" style="--x: 651; --y: 804; --w: 552; --h: 85; --label-width: 141">
+            <div class="footer-heading">
+              <svg class="icon" style="--size: 32" aria-hidden="true"><use href="#icon-file"/></svg>
+              <h2>关键字段<br><small>（Realm Profile<br> 主要内容）</small></h2>
+            </div>
+            <div class="footer-details">
+              <div class="fields">
+                <dl>
+                  <div><dt>package.href:</dt><dd>包下载地址</dd></div>
+                  <div><dt>sha256:</dt><dd>包的完整性校验值</dd></div>
+                  <div><dt>type:</dt><dd>包的类型（application/actr）</dd></div>
+                </dl>
+                <dl>
+                  <div><dt>issuer:</dt><dd>身份认证服务地址</dd></div>
+                  <div><dt>signaling:</dt><dd>实时连接服务地址</dd></div>
+                  <div><dt>turn:</dt><dd>中继服务地址</dd></div>
+                </dl>
+              </div>
+            </div>
+          </section>
+          <section class="footer legend panel blue placed" style="--x: 1212; --y: 804; --w: 538; --h: 85">
+            <div class="legend-title">
+              <svg class="icon" style="--size: 22" aria-hidden="true"><use href="#icon-info"/></svg>
+              <h2>图例</h2>
+            </div>
+            <ul class="swatches">
+              <li><span class="swatch blue host" aria-hidden="true"></span>客户端行为 / 请求</li>
+              <li><span class="swatch blue" aria-hidden="true"></span>Realm 响应</li>
+              <li><span class="swatch green" aria-hidden="true"></span>Infra Provider 响应</li>
+              <li><span class="swatch purple" aria-hidden="true"></span>Publisher 响应</li>
+            </ul>
+            <p class="legend-note">
+              <svg class="icon" style="--size: 19; --accent: #0b1768" aria-hidden="true"><use href="#icon-lock"/></svg>
+              所有关键数据均需签名验证与完整性校验（SHA-256 / Ed25519）。
+            </p>
+          </section>
+        </footer>
+      </main>
+    </div>
+  </div>
+</body>
+</html>
