@@ -388,6 +388,22 @@ Profile 的 `keys` 中找 key（`active` 或 `retired` 均可）验证 `manifest
 Publisher Profile 签名 key（`profile_signing_keys`）的轮换另按
 [Actr Authority Discovery](authority-discovery.zh.md) 第 4.4、4.5 节进行。
 
+### 6.9 Actrium 应用扩展
+
+`[extensions.actrium.application]` 用 `schema-version = 1` 声明 Product v1 应用。
+Service Component 是 `actr.component/1` 主 Workload，Keel Front 是同一个包内的
+签名资源。Front 的 `guest-entry` 必须引用 role 为 `resource` 的条目，
+`capability-manifest` 必须引用 role 为 `profile` 的条目，
+Service 的 `contract` 必须引用 role 为 `contract` 的条目。
+`contract-digest` 记录能力清单的 `sha256:<hex>`，
+`protocol-fingerprint` 记录 Service Proto 的语义摘要，格式相同。
+
+CLI 的应用校验覆盖单个无导入 Proto、没有远端 Actor 依赖的 Service，以及通过
+`host:service` 调用契约内本地 unary RPC 的 Guest。验包时解析包内契约，
+核对摘要、RPC、Guest 入口与 Keel API，再将已验签的 WASM 和 Guest 交给 Host。
+Host 负责安装分析、兼容性和运行时权限。完整清单见
+[Product v1 参考规范](../../docs/product/actrium-v1/12-reference-spec.zh.md#4-actr-manifest)。
+
 ## 7. Workload Profile
 
 ### 7.1 Profile 的职责

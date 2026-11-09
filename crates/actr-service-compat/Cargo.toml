@@ -18,6 +18,9 @@ readme = "README.md"
 [lints]
 workspace = true
 
+[features]
+standalone-proto = ["dep:protobuf-parse", "dep:serde_json", "dep:tempfile"]
+
 [dependencies]
 # Core dependencies for service compatibility analysis
 actr-protocol.workspace = true
@@ -35,3 +38,6 @@ chrono = { version = "0.4", features = ["serde"] }
 
 # Cryptographic hashing
 sha2 = "0.10"
+protobuf-parse = { version = "3.7.2", optional = true }
+serde_json = { workspace = true, optional = true }
+tempfile = { workspace = true, optional = true }

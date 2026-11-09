@@ -11,6 +11,9 @@ description = "ACTR package format: ZIP STORE-based .actr file reading, writing,
 [lints]
 workspace = true
 
+[features]
+actrium-application = ["dep:actr-service-compat", "dep:semver", "dep:serde_json", "dep:wasmparser"]
+
 [dependencies]
 zip = { version = "9.0.3", default-features = false, features = ["deflate"] }
 sha2.workspace = true
@@ -22,6 +25,10 @@ hex = "0.4"
 thiserror.workspace = true
 tracing.workspace = true
 actr-protocol.workspace = true
+actr-service-compat = { workspace = true, features = ["standalone-proto"], optional = true }
+semver = { version = "1", optional = true }
+serde_json = { workspace = true, optional = true }
+wasmparser = { version = "0.254.2", default-features = false, features = ["std", "component-model"], optional = true }
 
 [dev-dependencies]
 rand.workspace = true

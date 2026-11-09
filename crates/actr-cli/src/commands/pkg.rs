@@ -6,15 +6,16 @@
 //! actr pkg pack     [--manifest-path FILE] [--payload-root DIR] --output FILE
 //! actr pkg sign     [--manifest-path FILE] [--key FILE] [--binary FILE]
 //! actr pkg verify   --package FILE [--pubkey FILE]
-//! actr pkg keygen   [--output FILE] [--force]
+//! actr pkg keygen   [--output FILE] [--no-register] [--public-key-output FILE]
 //! ```
 //!
 //! Remote registry operations (`publish`) live under `actr registry`.
 //! End-to-end build + package is a single top-level command: `actr build`.
 
-use std::path::PathBuf;
+use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, ensure};
 use async_trait::async_trait;
 use base64::Engine;
 use clap::{Args, Subcommand};
@@ -119,18 +120,25 @@ pub struct PkgKeygenArgs {
     /// any other publisher will then be rejected (issue #425).
     #[arg(long, value_name = "NAME")]
     pub publisher: Option<String>,
+    /// Keep the generated key out of the global CLI configuration.
+    #[arg(long, requires = "output")]
+    pub no_register: bool,
+    /// Write a separate verification-only JSON file.
+    #[arg(long, value_name = "FILE")]
+    pub public_key_output: Option<PathBuf>,
 }
 
 #[async_trait]
 impl Command for PkgArgs {
     async fn execute(&self, _ctx: &CommandContext) -> Result<CommandResult> {
-        let cli_config = crate::config::resolver::resolve_effective_cli_config()?;
-        let keychain_ref = cli_config.publisher.keychain.as_deref();
-
         match &self.command {
-            PkgCommand::Pack(a) => execute_pack(a, keychain_ref)?,
-            PkgCommand::Sign(a) => execute_sign(a, keychain_ref).await?,
-            PkgCommand::Verify(a) => execute_verify(a, keychain_ref).await?,
+            PkgCommand::Pack(a) => execute_pack(a, keychain_fallback(a.key.is_some())?.as_deref())?,
+            PkgCommand::Sign(a) => {
+                execute_sign(a, keychain_fallback(a.key.is_some())?.as_deref()).await?
+            }
+            PkgCommand::Verify(a) => {
+                execute_verify(a, keychain_fallback(a.pubkey.is_some())?.as_deref()).await?
+            }
             PkgCommand::Keygen(a) => execute_keygen(a)?,
         }
         Ok(CommandResult::Success(String::new()))
@@ -149,13 +157,30 @@ impl Command for PkgArgs {
     }
 }
 
+fn keychain_fallback(explicit: bool) -> Result<Option<String>> {
+    if explicit {
+        return Ok(None);
+    }
+    Ok(crate::config::resolver::resolve_effective_cli_config()?
+        .publisher
+        .keychain)
+}
+
 fn execute_pack(args: &PkgPackArgs, config_keychain: Option<&str>) -> Result<()> {
     let key_path = resolve_key_path(args.key.as_deref(), config_keychain)?;
     let (signing_key, keychain_publisher) = load_signing_key_with_publisher(&key_path)?;
     let manifest_source = std::fs::read_to_string(&args.manifest_path)
         .with_context(|| format!("Failed to read manifest: {}", args.manifest_path.display()))?;
-    let manifest = actr_pack::ActorPackageManifest::from_toml(&manifest_source)?;
-    ensure_publisher_matches(keychain_publisher.as_deref(), &manifest.actor.publisher)?;
+    let template = actr_pack::ActorPackageTemplate::from_toml(&manifest_source)?;
+    ensure_publisher_matches(
+        keychain_publisher.as_deref(),
+        &template.manifest().actor.publisher,
+    )?;
+    let output = output_target(&args.output)?;
+    ensure!(
+        output != key_path.canonicalize()? && output != args.manifest_path.canonicalize()?,
+        "package output must differ from the signing key and manifest paths"
+    );
 
     let canonical_root = args.payload_root.canonicalize().with_context(|| {
         format!(
@@ -164,7 +189,8 @@ fn execute_pack(args: &PkgPackArgs, config_keychain: Option<&str>) -> Result<()>
         )
     })?;
     let mut payloads = std::collections::BTreeMap::new();
-    for file in &manifest.files {
+    let mut remaining = actr_pack::DEFAULT_MAX_VERIFIED_ENTRY_BYTES;
+    for file in &template.manifest().files {
         let path = canonical_root.join(&file.path);
         let canonical_path = path
             .canonicalize()
@@ -176,32 +202,66 @@ fn execute_pack(args: &PkgPackArgs, config_keychain: Option<&str>) -> Result<()>
                 canonical_root.display()
             );
         }
-        payloads.insert(
-            file.path.clone(),
-            std::fs::read(&canonical_path)
-                .with_context(|| format!("Failed to read payload: {}", canonical_path.display()))?,
+        ensure!(
+            output != canonical_path,
+            "package output must differ from payload `{}`",
+            file.path
         );
+        let mut bytes = Vec::new();
+        std::fs::File::open(&canonical_path)?
+            .take((remaining + 1) as u64)
+            .read_to_end(&mut bytes)
+            .with_context(|| format!("Failed to read payload: {}", canonical_path.display()))?;
+        ensure!(
+            bytes.len() <= remaining,
+            "package payloads exceed the {}-byte verification limit",
+            actr_pack::DEFAULT_MAX_VERIFIED_ENTRY_BYTES
+        );
+        remaining -= bytes.len();
+        payloads.insert(file.path.clone(), bytes);
     }
 
-    let package = actr_pack::pack_actor_package(&actr_pack::ActorPackOptions {
-        manifest,
-        payloads,
-        signing_key,
-    })?;
-    if let Some(parent) = args.output.parent() {
-        std::fs::create_dir_all(parent)
-            .with_context(|| format!("Failed to create {}", parent.display()))?;
+    let application = template.manifest().actrium_application().is_some();
+    let public_key = signing_key.verifying_key();
+    let package = template.pack(payloads, signing_key)?;
+    if application {
+        actr_pack::application::verify_actrium_application(&package, &public_key)?;
+    } else {
+        actr_pack::verify_actor_package(&package, &public_key)?;
     }
-    std::fs::write(&args.output, package)
-        .with_context(|| format!("Failed to write package: {}", args.output.display()))?;
+    write_atomic(&output, &package, true)?;
     println!("Actor package created: {}", args.output.display());
+    Ok(())
+}
+
+fn output_target(path: &Path) -> Result<PathBuf> {
+    let parent = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    let file_name = path.file_name().context("expected an output file path")?;
+    std::fs::create_dir_all(parent)
+        .with_context(|| format!("Failed to create {}", parent.display()))?;
+    Ok(parent.canonicalize()?.join(file_name))
+}
+
+fn write_atomic(path: &Path, bytes: &[u8], overwrite: bool) -> Result<()> {
+    let mut file =
+        tempfile::NamedTempFile::new_in(path.parent().context("missing output directory")?)?;
+    file.write_all(bytes)?;
+    let result = if overwrite {
+        file.persist(path)
+    } else {
+        file.persist_noclobber(path)
+    };
+    result.with_context(|| format!("Failed to write {}", path.display()))?;
     Ok(())
 }
 
 // ── keygen ───────────────────────────────────────────────────────────────────
 
 fn execute_keygen(args: &PkgKeygenArgs) -> Result<()> {
-    let key_path = match args.output {
+    let requested_key = match args.output {
         Some(ref path) => path.clone(),
         None => {
             let home = dirs::home_dir()
@@ -210,24 +270,40 @@ fn execute_keygen(args: &PkgKeygenArgs) -> Result<()> {
         }
     };
 
-    if key_path.is_dir() {
-        anyhow::bail!(
-            "Key output path is a directory: {}\nSpecify a file name inside it.",
-            key_path.display()
+    let key_path = output_target(&requested_key)?;
+    let public_path = args
+        .public_key_output
+        .as_deref()
+        .map(output_target)
+        .transpose()?;
+    ensure!(
+        public_path.as_ref() != Some(&key_path),
+        "the public and private key outputs must be different files"
+    );
+    for path in std::iter::once(&key_path).chain(public_path.iter()) {
+        ensure!(
+            !path.is_dir(),
+            "key output is a directory: {}",
+            path.display()
+        );
+        ensure!(
+            !path.exists() || args.force,
+            "key output already exists: {} (use --force to overwrite)",
+            path.display()
         );
     }
-
-    if key_path.exists() && !args.force {
-        anyhow::bail!(
-            "Key file already exists: {}\nUse --force to overwrite, or --output to specify a different path.",
-            key_path.display()
+    let global = if args.no_register {
+        None
+    } else {
+        let path = crate::config::loader::global_config_path()?;
+        let config = crate::config::loader::load_cli_config(&path)?.unwrap_or_default();
+        let target = output_target(&path)?;
+        ensure!(
+            target != key_path && public_path.as_ref() != Some(&target),
+            "key outputs must differ from the global CLI configuration"
         );
-    }
-
-    if let Some(parent) = key_path.parent() {
-        std::fs::create_dir_all(parent)
-            .with_context(|| format!("Failed to create directory: {}", parent.display()))?;
-    }
+        Some((target, config))
+    };
 
     let signing_key = SigningKey::generate(&mut rand::rngs::OsRng);
     let verifying_key = signing_key.verifying_key();
@@ -250,14 +326,12 @@ fn execute_keygen(args: &PkgKeygenArgs) -> Result<()> {
     }
 
     let json_str = serde_json::to_string_pretty(&key_json)?;
-    std::fs::write(&key_path, &json_str)
-        .with_context(|| format!("Failed to write key file: {}", key_path.display()))?;
-
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let perms = std::fs::Permissions::from_mode(0o600);
-        std::fs::set_permissions(&key_path, perms).ok();
+    write_atomic(&key_path, json_str.as_bytes(), args.force)?;
+    if let Some(path) = public_path {
+        let public_json = serde_json::to_vec_pretty(&serde_json::json!({
+            "public_key": public_b64
+        }))?;
+        write_atomic(&path, &public_json, args.force)?;
     }
 
     println!("Key pair generated: {}", key_path.display());
@@ -275,23 +349,16 @@ fn execute_keygen(args: &PkgKeygenArgs) -> Result<()> {
     println!("  kind = \"static\"");
     println!("  pubkey_file = \"public-key.json\"");
 
-    let global_path = crate::config::loader::global_config_path()?;
-    let mut global_config =
-        crate::config::loader::load_cli_config(&global_path)?.unwrap_or_default();
-    global_config.publisher.keychain = Some(key_path.display().to_string());
-    if let Some(parent) = global_path.parent() {
-        std::fs::create_dir_all(parent)
-            .with_context(|| format!("Failed to create {}", parent.display()))?;
+    if let Some((global_path, mut global_config)) = global {
+        global_config.publisher.keychain = Some(key_path.display().to_string());
+        let content =
+            toml::to_string_pretty(&global_config).with_context(|| "Failed to serialize config")?;
+        write_atomic(&global_path, content.as_bytes(), true)?;
+        println!(
+            "\nGlobal config updated: publisher.keychain = {}",
+            key_path.display()
+        );
     }
-    let content =
-        toml::to_string_pretty(&global_config).with_context(|| "Failed to serialize config")?;
-    std::fs::write(&global_path, content)
-        .with_context(|| format!("Failed to write {}", global_path.display()))?;
-    println!();
-    println!(
-        "✅ Global config updated: publisher.keychain = {}",
-        key_path.display()
-    );
 
     Ok(())
 }
@@ -481,19 +548,29 @@ async fn execute_verify(args: &PkgVerifyArgs, config_keychain: Option<&str>) -> 
         load_verifying_key_from_dev_key(&key_path)?
     };
 
-    if let Ok(manifest_source) = actr_pack::read_manifest_raw(&package_bytes) {
-        if let Ok(manifest) = actr_pack::ActorPackageManifest::from_toml(&manifest_source) {
-            let verified = actr_pack::verify_actor_package(&package_bytes, &pubkey)?;
-            println!("Package verification passed");
-            println!();
-            println!("  publisher: {}", manifest.actor.publisher);
-            println!("  type:         {}", verified.manifest.actor_type());
-            println!("  workload:     {}", manifest.workload.entry);
-            println!("  profile:      {}", manifest.workload.profile);
-            println!("  signing_key:  {}", manifest.signature.key_id);
-            println!("  files:        {}", manifest.files.len());
-            return Ok(());
+    let manifest_source = actr_pack::read_manifest_raw(&package_bytes)?;
+    let manifest_fields: toml::Table = toml::from_str(&manifest_source)?;
+    if manifest_fields.contains_key("format") {
+        let parsed = actr_pack::ActorPackageManifest::from_toml(&manifest_source)?;
+        let manifest = if parsed.actrium_application().is_some() {
+            actr_pack::application::verify_actrium_application(&package_bytes, &pubkey)?.manifest
+        } else {
+            actr_pack::verify_actor_package(&package_bytes, &pubkey)?.manifest
+        };
+        println!("Package verification passed");
+        println!();
+        println!("  publisher:   {}", manifest.actor.publisher);
+        println!("  type:        {}", manifest.actor_type());
+        println!("  workload:    {}", manifest.workload.entry);
+        println!("  profile:     {}", manifest.workload.profile);
+        println!("  signing_key: {}", manifest.signature.key_id);
+        println!("  files:       {}", manifest.files.len());
+        if let Some(application) = manifest.actrium_application() {
+            println!("  application: Product v{}", application.schema_version);
+            println!("  guest:       {}", application.front.guest_entry);
+            println!("  contract:    {}", application.service.contract);
         }
+        return Ok(());
     }
 
     let verified = actr_pack::verify(&package_bytes, &pubkey)?;

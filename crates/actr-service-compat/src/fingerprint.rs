@@ -47,13 +47,71 @@ impl Fingerprint {
             semantic_fingerprints.push(format!("{}:{}", file.name, spec.fingerprint));
         }
 
-        let combined = semantic_fingerprints.join("\n");
-        let mut hasher = Sha256::new();
-        hasher.update(combined.as_bytes());
-        Ok(format!("service_semantic:{:x}", hasher.finalize()))
+        Ok(service_fingerprint(&semantic_fingerprints.join("\n")))
     }
 
     // Removed: calculate_service_fingerprints() - content fingerprints are not semantically meaningful
+}
+
+fn service_fingerprint(entries: &str) -> String {
+    format!("service_semantic:{:x}", Sha256::digest(entries.as_bytes()))
+}
+
+/// Information derived from one self-contained Protobuf contract.
+#[cfg(feature = "standalone-proto")]
+pub struct StandaloneProtoContract {
+    pub service_fingerprint: String,
+    pub rpc_routes: std::collections::BTreeSet<String>,
+}
+
+/// Parse a contract without resolving any paths provided by its contents.
+#[cfg(feature = "standalone-proto")]
+pub fn inspect_standalone_proto(
+    file_name: &str,
+    content: &str,
+) -> anyhow::Result<StandaloneProtoContract> {
+    use anyhow::{Context, ensure};
+
+    let imports = protobuf_parse::pure::parse_dependencies(content)?;
+    ensure!(
+        imports.dependency.is_empty(),
+        "the application contract must be a self-contained .proto file"
+    );
+    // The pure parser accepts file paths. Use one fixed filename after checking
+    // imports with the same parser, and never join paths from the contract.
+    let temp = tempfile::tempdir()?;
+    let input = temp.path().join("input.proto");
+    std::fs::write(&input, content)?;
+    let descriptor = protobuf_parse::Parser::new()
+        .pure()
+        .include(temp.path())
+        .input(&input)
+        .file_descriptor_set()?
+        .file
+        .into_iter()
+        .find(|file| file.name() == "input.proto")
+        .context("missing descriptor for the application contract")?;
+
+    let normalized = proto_fingerprint::normalize::normalize_file(&descriptor);
+    let serialized = serde_json::to_string_pretty(&normalized)?;
+    let file_fingerprint = format!("{:x}", Sha256::digest(serialized.as_bytes()));
+    let prefix = if descriptor.package().is_empty() {
+        String::new()
+    } else {
+        format!("{}.", descriptor.package())
+    };
+    let mut rpc_routes = std::collections::BTreeSet::new();
+    for service in &descriptor.service {
+        for method in &service.method {
+            if !method.client_streaming() && !method.server_streaming() {
+                rpc_routes.insert(format!("{prefix}{}.{}", service.name(), method.name()));
+            }
+        }
+    }
+    Ok(StandaloneProtoContract {
+        service_fingerprint: service_fingerprint(&format!("{file_name}:{file_fingerprint}")),
+        rpc_routes,
+    })
 }
 
 // =========================================================================

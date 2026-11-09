@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use zip::CompressionMethod;
 use zip::write::SimpleFileOptions;
 
+use crate::application::ActriumApplication;
 use crate::error::PackError;
 use crate::util::{read_zip_entry_bounded, sha256_hex, sha256_zip_entry_bounded};
 use crate::verify::{DEFAULT_MAX_VERIFIED_ENTRIES, DEFAULT_MAX_VERIFIED_ENTRY_BYTES};
@@ -127,6 +128,8 @@ pub struct ActriumExtension {
     pub left_panel_default_visible: bool,
     #[serde(default, rename = "right-panel-default-visible")]
     pub right_panel_default_visible: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub application: Option<ActriumApplication>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -202,6 +205,10 @@ impl ActorPackageManifest {
                     self.workload.entry
                 ))
             })
+    }
+
+    pub fn actrium_application(&self) -> Option<&ActriumApplication> {
+        self.extensions.actrium.as_ref()?.application.as_ref()
     }
 
     pub fn validate(&self) -> Result<(), PackError> {
@@ -292,8 +299,85 @@ impl ActorPackageManifest {
                 )));
             }
         }
+        if let Some(application) = self.actrium_application() {
+            application.validate(self)?;
+        }
         Ok(())
     }
+}
+
+/// A pack-time template. Computed fields may be omitted here, but remain
+/// mandatory in the manifest read back from a signed archive.
+pub struct ActorPackageTemplate(ActorPackageManifest);
+
+impl ActorPackageTemplate {
+    pub fn from_toml(source: &str) -> Result<Self, PackError> {
+        reject_legacy_manifest(source)?;
+        let mut table: toml::Table = toml::from_str(source)
+            .map_err(|error| PackError::ManifestParseError(error.to_string()))?;
+        let signature = template_table(&mut table, "signature")?;
+        signature.entry("algorithm").or_insert("ed25519".into());
+        signature.entry("key-id").or_insert("pack-time".into());
+        let files = table
+            .get_mut("files")
+            .and_then(toml::Value::as_array_mut)
+            .ok_or_else(|| PackError::ManifestParseError("expected [[files]] entries".into()))?;
+        for file in files {
+            let file = file.as_table_mut().ok_or_else(|| {
+                PackError::ManifestParseError("expected a table in [[files]]".into())
+            })?;
+            file.entry("size").or_insert(0.into());
+            file.entry("sha256").or_insert("0".repeat(64).into());
+        }
+        if let Some(application) = table
+            .get_mut("extensions")
+            .and_then(toml::Value::as_table_mut)
+            .and_then(|extensions| extensions.get_mut("actrium"))
+            .and_then(toml::Value::as_table_mut)
+            .and_then(|actrium| actrium.get_mut("application"))
+            .and_then(toml::Value::as_table_mut)
+        {
+            let pending = format!("sha256:{}", "0".repeat(64));
+            template_table(application, "front")?
+                .entry("contract-digest")
+                .or_insert(pending.clone().into());
+            template_table(application, "service")?
+                .entry("protocol-fingerprint")
+                .or_insert(pending.into());
+        }
+        let manifest: ActorPackageManifest = toml::Value::Table(table)
+            .try_into()
+            .map_err(|error: toml::de::Error| PackError::ManifestParseError(error.to_string()))?;
+        manifest.validate()?;
+        Ok(Self(manifest))
+    }
+
+    pub fn manifest(&self) -> &ActorPackageManifest {
+        &self.0
+    }
+
+    pub fn pack(
+        self,
+        payloads: BTreeMap<String, Vec<u8>>,
+        signing_key: SigningKey,
+    ) -> Result<Vec<u8>, PackError> {
+        pack_actor_package(&ActorPackOptions {
+            manifest: self.0,
+            payloads,
+            signing_key,
+        })
+    }
+}
+
+fn template_table<'a>(
+    parent: &'a mut toml::Table,
+    key: &str,
+) -> Result<&'a mut toml::Table, PackError> {
+    parent
+        .entry(key)
+        .or_insert_with(|| toml::Value::Table(toml::Table::new()))
+        .as_table_mut()
+        .ok_or_else(|| PackError::ManifestParseError(format!("expected [{key}] to be a table")))
 }
 
 fn validate_package_path(path: &str) -> Result<(), PackError> {
@@ -352,6 +436,31 @@ pub fn pack_actor_package(options: &ActorPackOptions) -> Result<Vec<u8>, PackErr
             .ok_or_else(|| PackError::InvalidPackage(format!("missing payload `{}`", file.path)))?;
         file.size = bytes.len() as u64;
         file.sha256 = sha256_hex(bytes);
+    }
+    if let Some(application) = manifest.actrium_application() {
+        application.validate(&manifest)?;
+        #[cfg(feature = "actrium-application")]
+        {
+            let digests = crate::application::inspect_payloads(&manifest, application, |path| {
+                options
+                    .payloads
+                    .get(path)
+                    .map(|bytes| std::borrow::Cow::Borrowed(bytes.as_slice()))
+                    .ok_or_else(|| PackError::InvalidPackage(format!("missing payload `{path}`")))
+            })?;
+            let application = manifest
+                .extensions
+                .actrium
+                .as_mut()
+                .and_then(|extension| extension.application.as_mut())
+                .expect("application extension was present");
+            application.front.contract_digest = digests.contract_digest;
+            application.service.protocol_fingerprint = digests.protocol_fingerprint;
+        }
+        #[cfg(not(feature = "actrium-application"))]
+        return Err(PackError::InvalidPackage(
+            "Actrium application packing requires the actrium-application feature".into(),
+        ));
     }
     manifest.signature.algorithm = "ed25519".to_string();
     manifest.signature.key_id =
