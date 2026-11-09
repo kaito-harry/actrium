@@ -399,8 +399,9 @@ Service 的 `contract` 必须引用 role 为 `contract` 的条目。
 `protocol-fingerprint` 记录 Service Proto 的语义摘要，格式相同。
 
 CLI 的应用校验覆盖单个无导入 Proto、没有远端 Actor 依赖的 Service，以及通过
-`host:service` 调用契约内本地 unary RPC 的 Guest。验包时解析包内契约，
-核对摘要、RPC、Guest 入口与 Keel API，再将已验签的 WASM 和 Guest 交给 Host。
+`host:service` 调用契约内本地 unary RPC 的 Guest。验包时检查 Component 是否
+实现完整的 SDK Workload WIT 接口，再解析包内契约，核对摘要、RPC、Guest 入口与
+Keel API。通过校验后将已验签的 WASM 和 Guest 交给 Host。
 Host 负责安装分析、兼容性和运行时权限。完整清单见
 [Product v1 参考规范](../../docs/product/actrium-v1/12-reference-spec.zh.md#4-actr-manifest)。
 

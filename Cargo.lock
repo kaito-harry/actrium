@@ -313,6 +313,7 @@ dependencies = [
 name = "actr-pack"
 version = "0.10.7"
 dependencies = [
+ "actr-framework",
  "actr-protocol",
  "actr-service-compat",
  "base64",
@@ -327,6 +328,8 @@ dependencies = [
  "toml 1.1.2+spec-1.1.0",
  "tracing",
  "wasmparser 0.254.2",
+ "wit-component 0.254.2",
+ "wit-parser 0.254.2",
  "zip",
 ]
 

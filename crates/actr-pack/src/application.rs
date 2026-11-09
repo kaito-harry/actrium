@@ -137,7 +137,10 @@ mod payload {
     use actr_service_compat::fingerprint::inspect_standalone_proto;
     use semver::{Version, VersionReq};
     use serde::Deserialize;
-    use wasmparser::{ComponentExternalKind, Encoding, Parser, Payload};
+    use wasmparser::{
+        Validator, WasmFeatures,
+        component_types::{ComponentAnyTypeId, ComponentEntityType},
+    };
 
     use super::{ActriumApplication, require};
     use crate::{
@@ -173,6 +176,7 @@ mod payload {
         pub contract_digest: String,
         pub protocol_fingerprint: String,
         pub rpc_routes: Vec<String>,
+        pub guest_keel_api: Version,
     }
 
     pub(crate) fn inspect_payloads<'a>(
@@ -277,36 +281,70 @@ mod payload {
             contract_digest: format!("sha256:{}", sha256_hex(&capability_bytes)),
             protocol_fingerprint: format!("sha256:{fingerprint}"),
             rpc_routes: declared.rpc,
+            guest_keel_api: keel_version,
         })
     }
 
     fn validate_workload(bytes: &[u8]) -> Result<(), PackError> {
-        let mut depth = 0usize;
-        let mut exported_workload = false;
-        for payload in Parser::new(0).parse_all(bytes) {
-            match payload.map_err(|error| invalid("Service WASM", error))? {
-                Payload::Version { encoding, .. } if depth == 0 => {
-                    require(
-                        encoding == Encoding::Component,
-                        "the Service must be a WASM Component",
-                    )?;
-                }
-                Payload::ModuleSection { .. } | Payload::ComponentSection { .. } => depth += 1,
-                Payload::End(_) if depth > 0 => depth -= 1,
-                Payload::ComponentExportSection(exports) if depth == 0 => {
-                    for export in exports {
-                        let export =
-                            export.map_err(|error| invalid("Service WASM export", error))?;
-                        exported_workload |= export.kind == ComponentExternalKind::Instance
-                            && export.name.name == "actr:workload/workload@0.8.0";
-                    }
-                }
-                _ => {}
-            }
-        }
+        const WORLD: &str = "actr-workload-guest-v2";
+        const WORKLOAD: &str = "actr:workload/workload@0.8.0";
+
+        let mut resolve = wit_parser::Resolve::default();
+        let package = resolve
+            .push_str(
+                "actr-workload.wit",
+                actr_framework::guest::WASM_WORKLOAD_WIT,
+            )
+            .map_err(|error| invalid("SDK workload WIT", error))?;
+        let world = resolve
+            .select_world(&[package], Some(WORLD))
+            .map_err(|error| invalid("SDK workload world", error))?;
+        // Compare the exported interface type. WASI imports are checked
+        // separately by the runtime when it links the actual component.
+        let contract = wit_component::metadata::encode(
+            &resolve,
+            world,
+            wit_component::StringEncoding::UTF8,
+            None,
+        )
+        .map_err(|error| invalid("SDK workload type", error))?;
+        let mut validator = Validator::new_with_features(WasmFeatures::all());
+        let expected = validator
+            .validate_all(&contract)
+            .map_err(|error| invalid("SDK workload type", error))?;
+        let types = expected.as_ref();
+        let Some(ComponentEntityType::Type {
+            referenced: ComponentAnyTypeId::Component(outer),
+            ..
+        }) = types.component_item_for_export(WORLD).map(|item| item.ty)
+        else {
+            return Err(PackError::InvalidPackage(
+                "missing SDK workload world type".into(),
+            ));
+        };
+        let Some(ComponentEntityType::Component(world_type)) = types[outer]
+            .exports
+            .get(&resolve.id_of_name(package, WORLD))
+            .map(|item| item.ty)
+        else {
+            return Err(PackError::InvalidPackage(
+                "missing SDK workload component type".into(),
+            ));
+        };
+        let required = types[world_type].exports.get(WORKLOAD).ok_or_else(|| {
+            PackError::InvalidPackage("missing SDK workload interface type".into())
+        })?;
+
+        validator.reset();
+        let actual = validator
+            .validate_all(bytes)
+            .map_err(|error| invalid("Service WASM", error))?;
+        let exported = actual.component_item_for_export(WORKLOAD).ok_or_else(|| {
+            PackError::InvalidPackage(format!("the Service component must export {WORKLOAD}"))
+        })?;
         require(
-            exported_workload,
-            "the Service component must export actr:workload/workload@0.8.0",
+            ComponentEntityType::is_subtype_of(&exported.ty, actual.as_ref(), &required.ty, types),
+            format!("the Service export {WORKLOAD} does not implement the SDK workload ABI"),
         )
     }
 
@@ -320,6 +358,7 @@ mod payload {
         pub wasm: Vec<u8>,
         pub guest: Vec<u8>,
         pub rpc_routes: Vec<String>,
+        pub guest_keel_api: Version,
     }
 
     /// Verify the container and then the signed Front–Service contract.
@@ -352,6 +391,7 @@ mod payload {
             wasm,
             guest,
             rpc_routes: digests.rpc_routes,
+            guest_keel_api: digests.guest_keel_api,
         })
     }
 }
