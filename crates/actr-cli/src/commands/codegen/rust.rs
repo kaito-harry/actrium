@@ -4,7 +4,7 @@ use crate::commands::codegen::traits::{GenContext, LanguageGenerator};
 use crate::error::{ActrCliError, Result};
 use crate::utils::to_snake_case;
 use async_trait::async_trait;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::process::Command as StdCommand;
 use tracing::{debug, info, warn};
@@ -385,6 +385,7 @@ impl RustGenerator {
         let mut proto_modules = Vec::new();
         let mut service_modules = Vec::new();
         let mut runtime_modules = Vec::new();
+        let mut module_files = BTreeMap::new();
 
         use std::fs;
         for entry in fs::read_dir(output).map_err(|e| {
@@ -401,15 +402,28 @@ impl RustGenerator {
                     continue;
                 }
 
+                let module = rust_proto_module_name(file_name);
+                let source_file = format!("{file_name}.rs");
+                if let Some(previous) = module_files.insert(module.clone(), source_file.clone()) {
+                    return Err(ActrCliError::config_error(format!(
+                        "Generated Rust files `{previous}` and `{source_file}` both map to module `{module}`"
+                    )));
+                }
+                let declaration = if module == file_name {
+                    format!("pub mod {module};")
+                } else {
+                    format!("#[path = {source_file:?}]\npub mod {module};")
+                };
+
                 if file_name == GENERATED_HANDLER_MODULE {
                     // The aggregate ActrHandler adapter is generated runtime
                     // glue (not a protobuf module); it only exists when the
                     // DispatchSpec has local services.
-                    runtime_modules.push(format!("pub mod {file_name};"));
+                    runtime_modules.push(declaration);
                 } else if file_name.ends_with("_actor") || file_name.ends_with("_client") {
-                    service_modules.push(format!("pub mod {file_name};"));
+                    service_modules.push(declaration);
                 } else {
-                    proto_modules.push(format!("pub mod {file_name};"));
+                    proto_modules.push(declaration);
                 }
             }
         }
@@ -1211,6 +1225,10 @@ fn owner_relative_proto_type(type_ref: &crate::commands::codegen::TypeRef) -> Op
     }
 }
 
+fn rust_proto_module_name(package: &str) -> String {
+    package.replace('.', "_")
+}
+
 fn rust_scaffold_qualified_type(
     type_ref: &crate::commands::codegen::TypeRef,
     fallback: &str,
@@ -1224,7 +1242,7 @@ fn rust_scaffold_qualified_type(
             .map(to_snake_case)
             .unwrap_or_else(|| "proto".to_string())
     } else {
-        type_ref.proto_package.replace('.', "_")
+        rust_proto_module_name(&type_ref.proto_package)
     };
     let name = rust_message_import_name(type_ref);
     if name.is_empty() {
