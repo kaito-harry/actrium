@@ -180,61 +180,18 @@ v1 不引入「没有 Service 的页面应用」特例。工具链为 UI-only �
 
 因此所有 app Tab 仍统一 Attach 一个 Service，差别只在它是否包含自定义逻辑。
 
-## 6. Actrium Manifest 扩展
+## 6. Actrium 清单段
 
-Actr 基础 manifest 继续提供：
+Product v1 应用使用签名的 `actr-package/2` 清单。可选的顶层 `[actrium]` 表存放标题和图标等
+展示元数据。Product v1 应用包以 `[actrium.application]` 声明应用，其 `schema-version = 1`。
+主 Workload 使用 `actr.component/1`。`[[files]]` 绑定 Service Component、Guest、能力清单和
+Proto 的路径、角色、尺寸及 SHA-256。
 
-- publisher；
-- name/program；
-- version；
-- binary target/kind/hash；
-- Ed25519 signature 和 key id；
-- resources；
-- proto files；
-- dependency lock。
+应用声明包含 Front 的入口、Keel API、能力清单路径与摘要、Service 契约路径与协议语义指纹、
+Host API 兼容范围、请求的能力和组件允许列表。初始独立应用 profile 支持无远端 Actor 依赖的
+Service。Workspace、会话、隐私和资源配额由各自的产品策略定义，由 Host 执行。
 
-Actrium 增加：
-
-```toml
-[actrium]
-schema_version = 1
-min_actrium_version = "1.0.0"
-front_host_api = "^1.0"
-service_host_api = "^1.0"
-
-[actrium.front]
-guest_runtime = "keel-js"
-guest_entry = "ui/guest.bundle.js"
-keel_api = "^1.0"
-contract_manifest = "ui/capability-manifest.json"
-contract_digest = "sha256:..."
-
-[actrium.service]
-contract = "proto/service.proto"
-protocol_fingerprint = "sha256:..."
-
-[actrium.service.workspace]
-requirement = "required"
-provisioning = "user-selected"
-access = "read-write"
-providers = ["managed-store", "local-folder", "cloud-drive"]
-lease = "exclusive-writer"
-
-[actrium.session]
-attachment_policy = "exclusive"
-
-[actrium.privacy]
-schema_version = 1
-data_classes = ["public", "private", "secret"]
-default_unknown_action = "block-private-and-secret"
-
-[[actrium.privacy.actor_egress]]
-actr_type = "notes.example/index-worker@1.4.2"
-required = false
-data_classes = ["private"]
-```
-
-完整示例见[参考协议](12-reference-spec.md)。
+完整示例见 [Echo 参考清单](12-reference-spec.zh.md#4-actr-manifest)。
 
 ## 7. 权限、组件和配额声明
 

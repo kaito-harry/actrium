@@ -104,7 +104,7 @@ Allocated
 
 v1 正式 Marketplace：
 
-- `guest_runtime = "keel-js"`；
+- `guest-runtime = "keel-js"`；
 - bundle 是自包含 CommonJS；
 - 仅允许 React、JSX runtime、Keel Guest SDK 和 Actrium 声明的 `host:*` capability；
 - 禁止任意 npm/runtime require；

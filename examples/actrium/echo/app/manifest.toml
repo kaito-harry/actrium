@@ -19,7 +19,7 @@ api = "^1.0.0"
 required-capabilities = ["actor.call", "ui.render"]
 optional-capabilities = []
 
-[extensions.actrium]
+[actrium]
 title = "Echo"
 description = "Keel Guest demonstrating Actor RPC through Actrium"
 theme-color = "#101827"

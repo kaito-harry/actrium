@@ -388,6 +388,25 @@ Profile 的 `keys` 中找 key（`active` 或 `retired` 均可）验证 `manifest
 Publisher Profile 签名 key（`profile_signing_keys`）的轮换另按
 [Actr Authority Discovery](authority-discovery.zh.md) 第 4.4、4.5 节进行。
 
+### 6.9 `[actrium]`
+
+`[actrium]` 是可选的顶层表。展示元数据包括字符串 `title`、`description`、`icon` 和
+`theme-color`，以及默认为 `false` 的布尔字段 `left-panel-default-visible` 和
+`right-panel-default-visible`。这些字段均可省略。
+
+Product v1 应用包 **MUST** 在 `[actrium.application]` 中声明 `schema-version = 1`。
+展示元数据可以独立于应用描述存在。整个 `[actrium]` 表及其子表均由 manifest 签名覆盖。
+
+Service Component 是 `actr.component/1` 主 Workload，Keel Front 与它位于同一个签名包内。
+Front 的 `guest-entry` 必须引用 role 为 `resource` 的条目，`capability-manifest` 必须引用
+role 为 `profile` 的条目，Service 的 `contract` 必须引用 role 为 `contract` 的条目。
+`contract-digest` 是能力清单原始字节的 SHA-256，`protocol-fingerprint` 是 Service Proto 的
+语义摘要。两者均使用 `sha256:<hex>` 格式。
+
+初始应用 profile 支持一个无导入的 Service Proto、无远端 Actor 依赖的 Service，以及通过
+`host:service` 调用本地 unary RPC 的 Guest。Host 负责安装分析、兼容性和运行时权限。
+完整示例见 [Product v1 参考清单](../../docs/product/actrium-v1/12-reference-spec.zh.md#4-actr-manifest)。
+
 ## 7. Workload Profile
 
 ### 7.1 Profile 的职责
@@ -638,7 +657,7 @@ version = "^2.0.0"
 contract = "contracts/sync.proto"
 required = true
 
-[extensions.actrium]
+[actrium]
 title = "Notes"
 icon = "assets/icon.png"
 

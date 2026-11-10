@@ -28,7 +28,7 @@ api = "^1.0.0"
 required-capabilities = ["ui.render"]
 optional-capabilities = []
 
-[extensions.actrium]
+[actrium]
 title = "Notes"
 description = "A Keel Guest notes application"
 left-panel-default-visible = false
@@ -47,9 +47,8 @@ sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
 ```
 
 The packer replaces `size`, `sha256`, and `signature.key-id` with canonical
-values before signing. Actrium-specific presentation metadata belongs under
-`[extensions.actrium]`; it does not change Actor identity, workload semantics,
-Host requirements, or package trust.
+values before signing. Store Actrium presentation fields such as the title,
+description, and panel visibility in the top-level `[actrium]` table.
 
 The normative field, path, signature, and loading rules are defined in
 [`actr/protocols/actor-package.zh.md`](../../actr/protocols/actor-package.zh.md).

@@ -104,7 +104,7 @@ The following must hold:
 
 For the v1 official Marketplace:
 
-- `guest_runtime = "keel-js"`;
+- `guest-runtime = "keel-js"`;
 - the bundle is self-contained CommonJS;
 - only React, the JSX runtime, the Keel Guest SDK, and `host:*` capabilities declared by Actrium are allowed;
 - arbitrary npm/runtime `require` is prohibited;

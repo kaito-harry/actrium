@@ -28,7 +28,7 @@ api = "^1.0.0"
 required-capabilities = ["ui.render"]
 optional-capabilities = []
 
-[extensions.actrium]
+[actrium]
 title = "Notes"
 description = "A Keel Guest notes application"
 left-panel-default-visible = false
@@ -47,8 +47,7 @@ sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
 ```
 
 打包器会在签名前将 `size`、`sha256` 和 `signature.key-id` 替换为规范值。
-Actrium 专属的展示元数据放在 `[extensions.actrium]` 下；它不会改变 Actor 身份、
-Workload 语义、Host 要求或包的信任关系。
+标题、描述和面板可见性等 Actrium 展示字段放在顶层 `[actrium]` 表中。
 
 字段、路径、签名和装载规则以
 [`actr/protocols/actor-package.zh.md`](../../actr/protocols/actor-package.zh.md)

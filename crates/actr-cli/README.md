@@ -15,6 +15,27 @@ Meta (3):               actr config | version | completion
 
 Full help: `actr --help`, then drill down with `actr <command> --help`.
 
+## Pack a staged Actrium application
+
+Use an unsigned `actr-package/2` template to declare the main Component and
+the Guest, capability manifest, and Proto files under `--payload-root`.
+Declare the application under `[actrium.application]`.
+For the signed schema see the
+[Product v1 reference manifest](../../docs/product/actrium-v1/12-reference-spec.md#4-actr-manifest).
+The pack command fills sizes, hashes, contract digests, and the signature key ID
+and verifies the archive before writing it.
+
+```sh
+actr pkg keygen --publisher echo.example --no-register \
+  --output build/signing-key.json --public-key-output build/public-key.json
+actr pkg pack --manifest-path package.toml --payload-root build/stage \
+  --key build/signing-key.json --output build/echo.actr
+actr pkg verify --package build/echo.actr --pubkey build/public-key.json
+```
+
+Use the public-only JSON for verification. The explicit key options allow
+the commands to run without reading or registering a default keychain.
+
 ## Publisher Profile keys and signing
 
 The Publisher Profile signing key signs the domain's public metadata. The

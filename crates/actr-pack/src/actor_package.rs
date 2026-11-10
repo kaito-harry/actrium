@@ -34,8 +34,8 @@ pub struct ActorPackageManifest {
     pub host: HostRequirements,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub dependencies: BTreeMap<String, ActorDependency>,
-    #[serde(default, skip_serializing_if = "PackageExtensions::is_empty")]
-    pub extensions: PackageExtensions,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub actrium: Option<ActriumDescriptor>,
     pub signature: SignatureDescriptor,
     #[serde(default)]
     pub files: Vec<PackageFileEntry>,
@@ -98,20 +98,7 @@ fn default_true() -> bool {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct PackageExtensions {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub actrium: Option<ActriumExtension>,
-}
-
-impl PackageExtensions {
-    fn is_empty(&self) -> bool {
-        self.actrium.is_none()
-    }
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct ActriumExtension {
+pub struct ActriumDescriptor {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -208,7 +195,7 @@ impl ActorPackageManifest {
     }
 
     pub fn actrium_application(&self) -> Option<&ActriumApplication> {
-        self.extensions.actrium.as_ref()?.application.as_ref()
+        self.actrium.as_ref()?.application.as_ref()
     }
 
     pub fn validate(&self) -> Result<(), PackError> {
@@ -330,9 +317,7 @@ impl ActorPackageTemplate {
             file.entry("sha256").or_insert("0".repeat(64).into());
         }
         if let Some(application) = table
-            .get_mut("extensions")
-            .and_then(toml::Value::as_table_mut)
-            .and_then(|extensions| extensions.get_mut("actrium"))
+            .get_mut("actrium")
             .and_then(toml::Value::as_table_mut)
             .and_then(|actrium| actrium.get_mut("application"))
             .and_then(toml::Value::as_table_mut)
@@ -449,11 +434,10 @@ pub fn pack_actor_package(options: &ActorPackOptions) -> Result<Vec<u8>, PackErr
                     .ok_or_else(|| PackError::InvalidPackage(format!("missing payload `{path}`")))
             })?;
             let application = manifest
-                .extensions
                 .actrium
                 .as_mut()
-                .and_then(|extension| extension.application.as_mut())
-                .expect("application extension was present");
+                .and_then(|actrium| actrium.application.as_mut())
+                .expect("Actrium application descriptor was present");
             application.front.contract_digest = digests.contract_digest;
             application.service.protocol_fingerprint = digests.protocol_fingerprint;
         }
@@ -689,12 +673,10 @@ mod tests {
                 optional_capabilities: Vec::new(),
             },
             dependencies: BTreeMap::new(),
-            extensions: PackageExtensions {
-                actrium: Some(ActriumExtension {
-                    title: Some("Echo".to_string()),
-                    ..ActriumExtension::default()
-                }),
-            },
+            actrium: Some(ActriumDescriptor {
+                title: Some("Echo".to_string()),
+                ..ActriumDescriptor::default()
+            }),
             signature: SignatureDescriptor {
                 algorithm: "ed25519".to_string(),
                 key_id: "placeholder".to_string(),

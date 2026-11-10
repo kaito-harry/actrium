@@ -125,130 +125,98 @@ hosting, object storage) — it is not a trust source.
 
 ## 4. `.actr` Manifest
 
-Illustrative:
+Product v1 applications use `actr-package/2`. The top-level `[actrium]` table
+carries display metadata. The `[actrium.application]` table declares the
+application with `schema-version = 1`. The following example shows the signed
+Echo manifest with sizes, hashes, protocol fingerprint, and key ID generated
+by the packager.
 
 ```toml
-publisher = "notes.example"
-name = "team-notes"
-version = "1.4.2"
-signature_algorithm = "ed25519"
-signing_key_id = "actr-pub-3f9a1c0d2b7e4a61"
+format = "actr-package/2"
 
-[binary]
-path = "bin/service.wasm"
-target = "wasm32-wasip2"
-kind = "component"
-hash = "<sha256>"
-size = 1832000
+[actor]
+publisher = "echo.example"
+name = "echo"
+version = "0.1.0"
 
-[metadata]
-description = "Workspace-bound team notes"
-license = "Apache-2.0"
+[workload]
+profile = "actr.component/1"
+entry = "bin/service.wasm"
+
+[host]
+profile = "actr.host/1"
+api = "^1.0"
+
+[signature]
+algorithm = "ed25519"
+key-id = "actr-pub-3f9a1c0d2b7e4a61"
 
 [actrium]
-schema_version = 1
-min_actrium_version = "1.0.0"
-front_host_api = "^1.0"
-service_host_api = "^1.0"
+title = "Echo Chat"
+description = "A Keel Guest and a single Echo Service"
 
-[actrium.front]
-guest_runtime = "keel-js"
-guest_entry = "ui/guest.bundle.js"
-keel_api = "^1.0"
-contract_manifest = "ui/capability-manifest.json"
-contract_digest = "sha256:<digest>"
+[actrium.application]
+schema-version = 1
+min-actrium-version = "1.0.0"
+front-host-api = "^1.0"
+service-host-api = "^1.0"
 
-[actrium.service]
-contract = "proto/service.proto"
-protocol_fingerprint = "sha256:<digest>"
+[actrium.application.front]
+guest-runtime = "keel-js"
+guest-entry = "ui/guest.bundle.js"
+keel-api = "^1.0"
+capability-manifest = "ui/capability-manifest.json"
+contract-digest = "sha256:<capability file SHA-256>"
 
-[actrium.service.workspace]
-requirement = "required"
-provisioning = "user-selected"
-access = "read-write"
-providers = ["managed-store", "local-folder", "cloud-drive"]
-lease = "exclusive-writer"
+[actrium.application.service]
+contract = "proto/echo.proto"
+protocol-fingerprint = "sha256:<semantic contract SHA-256>"
 
-[actrium.session]
-attachment_policy = "exclusive"
-lease_seconds = 45
-heartbeat_seconds = 15
+[actrium.application.permissions.front]
+capabilities = ["service"]
 
-[actrium.privacy]
-schema_version = 1
-data_classes = ["public", "private", "secret"]
-default_unknown_action = "block-private-and-secret"
+[actrium.application.permissions.service]
+capabilities = []
 
-[[actrium.privacy.actor_egress]]
-actr_type = "notes.example/index-worker@1.4.2"
-required = false
-data_classes = ["private"]
+[actrium.application.components]
+allow = ["View", "Text", "ScrollView", "TextInput", "Button"]
 
-[actrium.permissions.front]
-capabilities = [
-  "service",
-  "host:clipboard.write",
-  "host:notifications"
-]
+[[files]]
+path = "bin/service.wasm"
+role = "workload"
+media-type = "application/wasm"
+size = 295050
+sha256 = "<file SHA-256>"
 
-[actrium.permissions.service]
-capabilities = [
-  "workspace:read-write",
-  "net:https://api.notes.example",
-  "actor:call:notes.example:index-worker:1"
-]
-
-[actrium.components]
-allow = [
-  "View",
-  "Text",
-  "ScrollView",
-  "TextInput",
-  "Button",
-  "FlatList",
-  "ImageAsset"
-]
-
-[actrium.resources.front]
-heap_bytes = 67108864
-js_turn_timeout_ms = 100
-max_render_nodes = 10000
-max_batch_ops = 5000
-max_rpc_concurrency = 32
-
-[actrium.resources.service]
-memory_bytes = 268435456
-max_mailbox = 4096
-max_rpc_concurrency = 128
-max_workspace_bytes = 10737418240
-
-[[resources]]
+[[files]]
 path = "ui/guest.bundle.js"
-hash = "<sha256>"
+role = "resource"
+media-type = "text/javascript"
+size = 7822
+sha256 = "<file SHA-256>"
 
-[[resources]]
+[[files]]
 path = "ui/capability-manifest.json"
-hash = "<sha256>"
+role = "profile"
+media-type = "application/json"
+size = 398
+sha256 = "<file SHA-256>"
 
-[[resources]]
-path = "assets/icon.png"
-hash = "<sha256>"
-
-[[proto_files]]
-name = "service.proto"
-path = "proto/service.proto"
-hash = "<sha256>"
-
-[lock_file]
-path = "manifest.lock.toml"
-hash = "<sha256>"
+[[files]]
+path = "proto/echo.proto"
+role = "contract"
+media-type = "text/plain"
+size = 197
+sha256 = "<file SHA-256>"
 ```
 
-The formal schema still needs to decide how to keep backward compatibility with the Actr base
-manifest, and to ensure `[actrium]` fields also fall within the scope the manifest signature
-covers.
+The signature covers the entire manifest, including `[actrium]` and its subtables.
+The capability digest matches the SHA-256 of its file entry. The initial
+standalone application validator supports one import-free Service Proto, a WASM
+Component, and a Keel Guest that calls local RPCs through `host:service`.
+The installer independently analyzes the Guest and applies runtime policy.
 
-A Native Capsule workload additionally needs:
+A future Native Capsule profile needs the following policy declaration as part of its own profile design.
 
 ```toml
 [actrium.native_capsule]

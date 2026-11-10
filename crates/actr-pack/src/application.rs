@@ -368,7 +368,7 @@ mod payload {
     ) -> Result<VerifiedActriumApplication, PackError> {
         let verified = verify_actor_package(bytes, public_key)?;
         let application = verified.manifest.actrium_application().ok_or_else(|| {
-            PackError::InvalidPackage("missing Actrium application extension".into())
+            PackError::InvalidPackage("missing [actrium.application] descriptor".into())
         })?;
         let read = |path: &str| {
             read_actor_package_file(bytes, &verified, path, DEFAULT_MAX_VERIFIED_ENTRY_BYTES)

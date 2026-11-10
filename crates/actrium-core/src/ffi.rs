@@ -32,30 +32,30 @@ pub struct ActrPackageManifestInfo {
 
 impl From<ActrPackageManifest> for ActrPackageManifestInfo {
     fn from(manifest: ActrPackageManifest) -> Self {
-        let extension = manifest.extensions.actrium.as_ref();
+        let actrium = manifest.actrium.as_ref();
         let is_keel_guest = manifest.workload.profile == actr_pack::KEEL_GUEST_PROFILE_V1;
 
         Self {
-            name: extension
+            name: actrium
                 .and_then(|value| value.title.clone())
                 .unwrap_or_else(|| manifest.actor.name.clone()),
             version: manifest.actor.version.clone(),
-            description: extension.and_then(|value| value.description.clone()),
+            description: actrium.and_then(|value| value.description.clone()),
             app_id: Some(format!(
                 "{}/{}@{}",
                 manifest.actor.publisher, manifest.actor.name, manifest.actor.version
             )),
-            icon: extension.and_then(|value| value.icon.clone()),
+            icon: actrium.and_then(|value| value.icon.clone()),
             entry: manifest.workload.entry,
-            left_panel_default_visible: extension
+            left_panel_default_visible: actrium
                 .is_some_and(|value| value.left_panel_default_visible),
-            right_panel_default_visible: extension
+            right_panel_default_visible: actrium
                 .is_some_and(|value| value.right_panel_default_visible),
             contract_name: is_keel_guest.then(|| "keel.guest".to_string()),
             contract_version: is_keel_guest.then_some(1),
             permissions: manifest.host.required_capabilities,
             system_app_type: None,
-            theme_color: extension.and_then(|value| value.theme_color.clone()),
+            theme_color: actrium.and_then(|value| value.theme_color.clone()),
         }
     }
 }
@@ -2900,7 +2900,7 @@ mod tests {
                 profile = "actr.host/1"
                 api = "^1"
                 required-capabilities = ["ui.render"]
-                [extensions.actrium]
+                [actrium]
                 title = "Demo"
                 theme-color = "#111111"
                 [signature]

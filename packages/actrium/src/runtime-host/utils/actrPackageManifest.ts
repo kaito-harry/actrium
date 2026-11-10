@@ -43,7 +43,7 @@ export interface ActorDependency {
   required: boolean;
 }
 
-export interface ActriumPackageExtension {
+export interface ActriumPackageMetadata {
   title?: string;
   description?: string;
   icon?: string;
@@ -66,7 +66,7 @@ export interface ActrPackageManifest {
   workload: WorkloadDescriptor;
   host: HostRequirements;
   dependencies: Record<string, ActorDependency>;
-  extensions: { actrium?: ActriumPackageExtension };
+  actrium?: ActriumPackageMetadata;
   signature: { algorithm: 'ed25519'; keyId: string };
   files: PackageFileEntry[];
 }
@@ -180,7 +180,7 @@ export function parseActrPackageManifest(source: string): ActrPackageManifest {
       optionalCapabilities: optionalStringArray(hostRaw, 'optional-capabilities') ?? [],
     },
     dependencies: parseDependencies(root.dependencies),
-    extensions: parseExtensions(root.extensions),
+    actrium: parseActriumMetadata(root.actrium),
     signature: {
       algorithm: 'ed25519',
       keyId: requiredString(signatureRaw, 'key-id'),
@@ -246,22 +246,18 @@ function parseDependencies(value: unknown): Record<string, ActorDependency> {
   );
 }
 
-function parseExtensions(value: unknown): ActrPackageManifest['extensions'] {
-  if (value === undefined) return {};
-  const extensions = requiredRecord(value, 'extensions');
-  if (extensions.actrium === undefined) return {};
-  const actrium = requiredRecord(extensions.actrium, 'extensions.actrium');
+function parseActriumMetadata(value: unknown): ActriumPackageMetadata | undefined {
+  if (value === undefined) return undefined;
+  const actrium = requiredRecord(value, 'actrium');
   return {
-    actrium: {
-      title: optionalString(actrium, 'title'),
-      description: optionalString(actrium, 'description'),
-      icon: optionalString(actrium, 'icon'),
-      themeColor: optionalString(actrium, 'theme-color'),
-      leftPanelDefaultVisible:
-        optionalBoolean(actrium, 'left-panel-default-visible') ?? false,
-      rightPanelDefaultVisible:
-        optionalBoolean(actrium, 'right-panel-default-visible') ?? false,
-    },
+    title: optionalString(actrium, 'title'),
+    description: optionalString(actrium, 'description'),
+    icon: optionalString(actrium, 'icon'),
+    themeColor: optionalString(actrium, 'theme-color'),
+    leftPanelDefaultVisible:
+      optionalBoolean(actrium, 'left-panel-default-visible') ?? false,
+    rightPanelDefaultVisible:
+      optionalBoolean(actrium, 'right-panel-default-visible') ?? false,
   };
 }
 

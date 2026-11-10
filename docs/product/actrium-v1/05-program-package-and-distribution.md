@@ -180,61 +180,24 @@ v1 does not introduce a special case for "a page app with no Service." The toolc
 
 So every app Tab still uniformly Attaches to a Service; the only difference is whether that Service contains custom logic.
 
-## 6. Actrium Manifest extensions
+## 6. Actrium manifest section
 
-The Actr base manifest continues to provide:
+Product v1 applications use a signed `actr-package/2` manifest. The optional
+top-level `[actrium]` table carries display metadata such as the title and icon.
+A Product v1 package declares `[actrium.application]` with `schema-version = 1`.
+Its main workload uses `actr.component/1`. The signed `[[files]]` entries bind
+the Service Component, Guest, capability manifest, and Proto to their paths,
+roles, sizes, and SHA-256 digests.
 
-- publisher;
-- name/program;
-- version;
-- binary target/kind/hash;
-- Ed25519 signature and key id;
-- resources;
-- proto files;
-- dependency lock.
+The application descriptor declares the Front entry, Keel API, capability
+manifest path and digest, Service contract path and semantic fingerprint, Host
+API compatibility, requested capabilities, and allowed components. The initial
+standalone profile supports a Service without remote Actor dependencies.
+Workspace, session, privacy, and resource limits are defined by their respective
+product policies and enforced by the Host.
 
-Actrium adds:
-
-```toml
-[actrium]
-schema_version = 1
-min_actrium_version = "1.0.0"
-front_host_api = "^1.0"
-service_host_api = "^1.0"
-
-[actrium.front]
-guest_runtime = "keel-js"
-guest_entry = "ui/guest.bundle.js"
-keel_api = "^1.0"
-contract_manifest = "ui/capability-manifest.json"
-contract_digest = "sha256:..."
-
-[actrium.service]
-contract = "proto/service.proto"
-protocol_fingerprint = "sha256:..."
-
-[actrium.service.workspace]
-requirement = "required"
-provisioning = "user-selected"
-access = "read-write"
-providers = ["managed-store", "local-folder", "cloud-drive"]
-lease = "exclusive-writer"
-
-[actrium.session]
-attachment_policy = "exclusive"
-
-[actrium.privacy]
-schema_version = 1
-data_classes = ["public", "private", "secret"]
-default_unknown_action = "block-private-and-secret"
-
-[[actrium.privacy.actor_egress]]
-actr_type = "notes.example/index-worker@1.4.2"
-required = false
-data_classes = ["private"]
-```
-
-See the full example in [Reference Specification](12-reference-spec.md).
+See the [Echo reference manifest](12-reference-spec.md#4-actr-manifest) for the
+complete example.
 
 ## 7. Permission, component and quota declarations
 
