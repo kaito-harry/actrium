@@ -182,11 +182,59 @@ So every app Tab still uniformly Attaches to a Service; the only difference is w
 
 ## 6. Actrium Manifest extensions
 
-Actrium applications use `[extensions.actrium.application]` with `schema-version = 1` in the signed `actr-package/2` manifest. The main Workload has the `actr.component/1` profile. The `[[files]]` entries bind the paths, roles, sizes, and SHA-256 hashes of the WASM, Guest, capability manifest, and Proto.
+The Actr base manifest continues to provide:
 
-The extension declares the Front entry, Keel API, capability manifest path and digest, and the Service contract path and semantic fingerprint. It also declares Host API compatibility ranges, capability requests, and the component allowlist. The initial CLI application validator covers a standalone Service without remote Actor dependencies. Workspace, session, privacy, and resource policies remain part of the product's runtime design.
+- publisher;
+- name/program;
+- version;
+- binary target/kind/hash;
+- Ed25519 signature and key id;
+- resources;
+- proto files;
+- dependency lock.
 
-See the [reference manifest](12-reference-spec.md#4-actr-manifest) for the full Echo example.
+Actrium adds:
+
+```toml
+[actrium]
+schema_version = 1
+min_actrium_version = "1.0.0"
+front_host_api = "^1.0"
+service_host_api = "^1.0"
+
+[actrium.front]
+guest_runtime = "keel-js"
+guest_entry = "ui/guest.bundle.js"
+keel_api = "^1.0"
+contract_manifest = "ui/capability-manifest.json"
+contract_digest = "sha256:..."
+
+[actrium.service]
+contract = "proto/service.proto"
+protocol_fingerprint = "sha256:..."
+
+[actrium.service.workspace]
+requirement = "required"
+provisioning = "user-selected"
+access = "read-write"
+providers = ["managed-store", "local-folder", "cloud-drive"]
+lease = "exclusive-writer"
+
+[actrium.session]
+attachment_policy = "exclusive"
+
+[actrium.privacy]
+schema_version = 1
+data_classes = ["public", "private", "secret"]
+default_unknown_action = "block-private-and-secret"
+
+[[actrium.privacy.actor_egress]]
+actr_type = "notes.example/index-worker@1.4.2"
+required = false
+data_classes = ["private"]
+```
+
+See the full example in [Reference Specification](12-reference-spec.md).
 
 ## 7. Permission, component and quota declarations
 
