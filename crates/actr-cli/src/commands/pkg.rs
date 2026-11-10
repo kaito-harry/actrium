@@ -283,12 +283,12 @@ fn execute_keygen(args: &PkgKeygenArgs) -> Result<()> {
     for path in std::iter::once(&key_path).chain(public_path.iter()) {
         ensure!(
             !path.is_dir(),
-            "key output is a directory: {}",
+            "Key output path is a directory: {}\nSpecify a file name inside it.",
             path.display()
         );
         ensure!(
             !path.exists() || args.force,
-            "key output already exists: {} (use --force to overwrite)",
+            "Key file already exists: {}\nUse --force to overwrite, or choose a different output path.",
             path.display()
         );
     }
