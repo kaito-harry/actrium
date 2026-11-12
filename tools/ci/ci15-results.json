@@ -1,0 +1,694 @@
+[
+  {
+    "label": "baseline-cold",
+    "id": 43171949035,
+    "url": "https://github.com/kaito-harry/actrium/actions/runs/43171949035",
+    "sha": "c4d3aad8122f750b8da97e996bc4c2fa8506b3db",
+    "created_at": "2026-11-12T06:59:19Z",
+    "updated_at": "2026-11-12T07:24:57Z",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "id": 131027114978,
+        "name": "Language Policy",
+        "conclusion": "success",
+        "start": "2026-11-12T06:59:22Z",
+        "end": "2026-11-12T06:59:55Z",
+        "duration_s": 33,
+        "finish_from_run_s": 36
+      },
+      {
+        "id": 131027115207,
+        "name": "Determine Affected Targets",
+        "conclusion": "success",
+        "start": "2026-11-12T06:59:22Z",
+        "end": "2026-11-12T06:59:29Z",
+        "duration_s": 7,
+        "finish_from_run_s": 10
+      },
+      {
+        "id": 131027115338,
+        "name": "Commit Identity Privacy",
+        "conclusion": "success",
+        "start": "2026-11-12T06:59:22Z",
+        "end": "2026-11-12T06:59:32Z",
+        "duration_s": 10,
+        "finish_from_run_s": 13
+      },
+      {
+        "id": 131027172659,
+        "name": "Dependency Audit",
+        "conclusion": "success",
+        "start": "2026-11-12T06:59:31Z",
+        "end": "2026-11-12T07:02:01Z",
+        "duration_s": 150,
+        "finish_from_run_s": 162
+      },
+      {
+        "id": 131027172671,
+        "name": "Prepare CLI Web Runtime",
+        "conclusion": "success",
+        "start": "2026-11-12T06:59:31Z",
+        "end": "2026-11-12T07:05:07Z",
+        "duration_s": 336,
+        "finish_from_run_s": 348
+      },
+      {
+        "id": 131027172686,
+        "name": "Swift",
+        "conclusion": "success",
+        "start": "2026-11-12T06:59:32Z",
+        "end": "2026-11-12T07:11:23Z",
+        "duration_s": 711,
+        "finish_from_run_s": 724
+      },
+      {
+        "id": 131027172732,
+        "name": "WebRTC",
+        "conclusion": "success",
+        "start": "2026-11-12T06:59:32Z",
+        "end": "2026-11-12T07:14:00Z",
+        "duration_s": 868,
+        "finish_from_run_s": 881
+      },
+      {
+        "id": 131027172740,
+        "name": "TypeScript",
+        "conclusion": "success",
+        "start": "2026-11-12T06:59:32Z",
+        "end": "2026-11-12T07:05:57Z",
+        "duration_s": 385,
+        "finish_from_run_s": 398
+      },
+      {
+        "id": 131027172848,
+        "name": "C# / ActrSharp + fixture (win-x64 gate)",
+        "conclusion": "success",
+        "start": "2026-11-12T06:59:32Z",
+        "end": "2026-11-12T07:02:24Z",
+        "duration_s": 172,
+        "finish_from_run_s": 185
+      },
+      {
+        "id": 131027172924,
+        "name": "Rust E2E Compile",
+        "conclusion": "success",
+        "start": "2026-11-12T06:59:32Z",
+        "end": "2026-11-12T07:03:15Z",
+        "duration_s": 223,
+        "finish_from_run_s": 236
+      },
+      {
+        "id": 131028310639,
+        "name": "C# / ARM64 runner (signal-only)",
+        "conclusion": "skipped",
+        "start": "2026-11-12T07:02:25Z",
+        "end": "2026-11-12T07:02:24Z",
+        "duration_s": -1,
+        "finish_from_run_s": 185
+      },
+      {
+        "id": 131029363392,
+        "name": "Web",
+        "conclusion": "success",
+        "start": "2026-11-12T07:05:09Z",
+        "end": "2026-11-12T07:08:55Z",
+        "duration_s": 226,
+        "finish_from_run_s": 576
+      },
+      {
+        "id": 131029363404,
+        "name": "Test (Rust, rest)",
+        "conclusion": "success",
+        "start": "2026-11-12T07:05:09Z",
+        "end": "2026-11-12T07:17:20Z",
+        "duration_s": 731,
+        "finish_from_run_s": 1081
+      },
+      {
+        "id": 131029363405,
+        "name": "E2E Package Runtime",
+        "conclusion": "success",
+        "start": "2026-11-12T07:05:09Z",
+        "end": "2026-11-12T07:20:49Z",
+        "duration_s": 940,
+        "finish_from_run_s": 1290
+      },
+      {
+        "id": 131029363410,
+        "name": "Test (Rust, realtime)",
+        "conclusion": "success",
+        "start": "2026-11-12T07:05:09Z",
+        "end": "2026-11-12T07:18:25Z",
+        "duration_s": 796,
+        "finish_from_run_s": 1146
+      },
+      {
+        "id": 131029363411,
+        "name": "Rust MSRV (1.95)",
+        "conclusion": "success",
+        "start": "2026-11-12T07:05:09Z",
+        "end": "2026-11-12T07:22:40Z",
+        "duration_s": 1051,
+        "finish_from_run_s": 1401
+      },
+      {
+        "id": 131029363495,
+        "name": "Rust",
+        "conclusion": "success",
+        "start": "2026-11-12T07:05:09Z",
+        "end": "2026-11-12T07:24:50Z",
+        "duration_s": 1181,
+        "finish_from_run_s": 1531
+      },
+      {
+        "id": 131037228769,
+        "name": "Gate",
+        "conclusion": "success",
+        "start": "2026-11-12T07:24:53Z",
+        "end": "2026-11-12T07:24:57Z",
+        "duration_s": 4,
+        "finish_from_run_s": 1538
+      }
+    ]
+  },
+  {
+    "label": "batch1-cold",
+    "id": 43175290302,
+    "url": "https://github.com/kaito-harry/actrium/actions/runs/43175290302",
+    "sha": "c4d3aad8122f750b8da97e996bc4c2fa8506b3db",
+    "created_at": "2026-11-12T07:26:32Z",
+    "updated_at": "2026-11-12T07:58:52Z",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "id": 131037947928,
+        "name": "Language Policy",
+        "conclusion": "success",
+        "start": "2026-11-12T07:26:35Z",
+        "end": "2026-11-12T07:27:08Z",
+        "duration_s": 33,
+        "finish_from_run_s": 36
+      },
+      {
+        "id": 131037948246,
+        "name": "Commit Identity Privacy",
+        "conclusion": "success",
+        "start": "2026-11-12T07:26:35Z",
+        "end": "2026-11-12T07:26:43Z",
+        "duration_s": 8,
+        "finish_from_run_s": 11
+      },
+      {
+        "id": 131037948262,
+        "name": "Determine Affected Targets",
+        "conclusion": "success",
+        "start": "2026-11-12T07:26:35Z",
+        "end": "2026-11-12T07:26:42Z",
+        "duration_s": 7,
+        "finish_from_run_s": 10
+      },
+      {
+        "id": 131038013240,
+        "name": "Dependency Audit",
+        "conclusion": "success",
+        "start": "2026-11-12T07:26:45Z",
+        "end": "2026-11-12T07:29:50Z",
+        "duration_s": 185,
+        "finish_from_run_s": 198
+      },
+      {
+        "id": 131038013251,
+        "name": "TypeScript",
+        "conclusion": "success",
+        "start": "2026-11-12T07:26:45Z",
+        "end": "2026-11-12T07:33:09Z",
+        "duration_s": 384,
+        "finish_from_run_s": 397
+      },
+      {
+        "id": 131038013334,
+        "name": "WebRTC",
+        "conclusion": "success",
+        "start": "2026-11-12T07:26:45Z",
+        "end": "2026-11-12T07:38:18Z",
+        "duration_s": 693,
+        "finish_from_run_s": 706
+      },
+      {
+        "id": 131038013338,
+        "name": "Prepare CLI Web Runtime",
+        "conclusion": "success",
+        "start": "2026-11-12T07:26:45Z",
+        "end": "2026-11-12T07:31:11Z",
+        "duration_s": 266,
+        "finish_from_run_s": 279
+      },
+      {
+        "id": 131038013430,
+        "name": "Swift",
+        "conclusion": "success",
+        "start": "2026-11-12T07:26:46Z",
+        "end": "2026-11-12T07:39:56Z",
+        "duration_s": 790,
+        "finish_from_run_s": 804
+      },
+      {
+        "id": 131038013467,
+        "name": "C# / ActrSharp + fixture (win-x64 gate)",
+        "conclusion": "success",
+        "start": "2026-11-12T07:26:46Z",
+        "end": "2026-11-12T07:30:31Z",
+        "duration_s": 225,
+        "finish_from_run_s": 239
+      },
+      {
+        "id": 131038014671,
+        "name": "Rust E2E Compile",
+        "conclusion": "success",
+        "start": "2026-11-12T07:26:46Z",
+        "end": "2026-11-12T07:31:30Z",
+        "duration_s": 284,
+        "finish_from_run_s": 298
+      },
+      {
+        "id": 131039522080,
+        "name": "C# / ARM64 runner (signal-only)",
+        "conclusion": "skipped",
+        "start": "2026-11-12T07:30:32Z",
+        "end": "2026-11-12T07:30:31Z",
+        "duration_s": -1,
+        "finish_from_run_s": 239
+      },
+      {
+        "id": 131039792901,
+        "name": "Rust MSRV (1.95)",
+        "conclusion": "success",
+        "start": "2026-11-12T07:31:14Z",
+        "end": "2026-11-12T07:48:39Z",
+        "duration_s": 1045,
+        "finish_from_run_s": 1327
+      },
+      {
+        "id": 131039792902,
+        "name": "E2E Package Runtime",
+        "conclusion": "success",
+        "start": "2026-11-12T07:31:14Z",
+        "end": "2026-11-12T07:58:45Z",
+        "duration_s": 1651,
+        "finish_from_run_s": 1933
+      },
+      {
+        "id": 131039792943,
+        "name": "Web",
+        "conclusion": "success",
+        "start": "2026-11-12T07:31:14Z",
+        "end": "2026-11-12T07:35:24Z",
+        "duration_s": 250,
+        "finish_from_run_s": 532
+      },
+      {
+        "id": 131039792955,
+        "name": "Test (Rust, rest)",
+        "conclusion": "success",
+        "start": "2026-11-12T07:31:15Z",
+        "end": "2026-11-12T07:48:03Z",
+        "duration_s": 1008,
+        "finish_from_run_s": 1291
+      },
+      {
+        "id": 131039792980,
+        "name": "Rust",
+        "conclusion": "success",
+        "start": "2026-11-12T07:31:15Z",
+        "end": "2026-11-12T07:43:21Z",
+        "duration_s": 726,
+        "finish_from_run_s": 1009
+      },
+      {
+        "id": 131039793413,
+        "name": "Test (Rust, realtime)",
+        "conclusion": "success",
+        "start": "2026-11-12T07:31:14Z",
+        "end": "2026-11-12T07:48:06Z",
+        "duration_s": 1012,
+        "finish_from_run_s": 1294
+      },
+      {
+        "id": 131050898214,
+        "name": "Gate",
+        "conclusion": "success",
+        "start": "2026-11-12T07:58:48Z",
+        "end": "2026-11-12T07:58:52Z",
+        "duration_s": 4,
+        "finish_from_run_s": 1940
+      }
+    ]
+  },
+  {
+    "label": "baseline-warm",
+    "id": 43179482279,
+    "url": "https://github.com/kaito-harry/actrium/actions/runs/43179482279",
+    "sha": "9cf6a9e37eb7e51b879d3ceb39a2bf01af19dec9",
+    "created_at": "2026-11-12T08:00:39Z",
+    "updated_at": "2026-11-12T08:17:14Z",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "id": 131051683446,
+        "name": "Determine Affected Targets",
+        "conclusion": "success",
+        "start": "2026-11-12T08:00:41Z",
+        "end": "2026-11-12T08:00:48Z",
+        "duration_s": 7,
+        "finish_from_run_s": 9
+      },
+      {
+        "id": 131051683638,
+        "name": "Language Policy",
+        "conclusion": "success",
+        "start": "2026-11-12T08:00:42Z",
+        "end": "2026-11-12T08:01:12Z",
+        "duration_s": 30,
+        "finish_from_run_s": 33
+      },
+      {
+        "id": 131051683664,
+        "name": "Commit Identity Privacy",
+        "conclusion": "success",
+        "start": "2026-11-12T08:00:42Z",
+        "end": "2026-11-12T08:00:51Z",
+        "duration_s": 9,
+        "finish_from_run_s": 12
+      },
+      {
+        "id": 131051752577,
+        "name": "Rust E2E Compile",
+        "conclusion": "success",
+        "start": "2026-11-12T08:00:51Z",
+        "end": "2026-11-12T08:03:51Z",
+        "duration_s": 180,
+        "finish_from_run_s": 192
+      },
+      {
+        "id": 131051752595,
+        "name": "Swift",
+        "conclusion": "success",
+        "start": "2026-11-12T08:00:52Z",
+        "end": "2026-11-12T08:07:59Z",
+        "duration_s": 427,
+        "finish_from_run_s": 440
+      },
+      {
+        "id": 131051752605,
+        "name": "WebRTC",
+        "conclusion": "success",
+        "start": "2026-11-12T08:00:51Z",
+        "end": "2026-11-12T08:13:54Z",
+        "duration_s": 783,
+        "finish_from_run_s": 795
+      },
+      {
+        "id": 131051752607,
+        "name": "TypeScript",
+        "conclusion": "success",
+        "start": "2026-11-12T08:00:51Z",
+        "end": "2026-11-12T08:03:26Z",
+        "duration_s": 155,
+        "finish_from_run_s": 167
+      },
+      {
+        "id": 131051752678,
+        "name": "Dependency Audit",
+        "conclusion": "success",
+        "start": "2026-11-12T08:00:52Z",
+        "end": "2026-11-12T08:04:00Z",
+        "duration_s": 188,
+        "finish_from_run_s": 201
+      },
+      {
+        "id": 131051752776,
+        "name": "Prepare CLI Web Runtime",
+        "conclusion": "success",
+        "start": "2026-11-12T08:00:51Z",
+        "end": "2026-11-12T08:01:03Z",
+        "duration_s": 12,
+        "finish_from_run_s": 24
+      },
+      {
+        "id": 131051753183,
+        "name": "C# / ActrSharp + fixture (win-x64 gate)",
+        "conclusion": "success",
+        "start": "2026-11-12T08:00:53Z",
+        "end": "2026-11-12T08:04:53Z",
+        "duration_s": 240,
+        "finish_from_run_s": 254
+      },
+      {
+        "id": 131051867599,
+        "name": "E2E Package Runtime",
+        "conclusion": "success",
+        "start": "2026-11-12T08:01:06Z",
+        "end": "2026-11-12T08:17:07Z",
+        "duration_s": 961,
+        "finish_from_run_s": 988
+      },
+      {
+        "id": 131051867600,
+        "name": "Rust MSRV (1.95)",
+        "conclusion": "success",
+        "start": "2026-11-12T08:01:06Z",
+        "end": "2026-11-12T08:16:17Z",
+        "duration_s": 911,
+        "finish_from_run_s": 938
+      },
+      {
+        "id": 131051867622,
+        "name": "Test (Rust, rest)",
+        "conclusion": "success",
+        "start": "2026-11-12T08:01:06Z",
+        "end": "2026-11-12T08:13:32Z",
+        "duration_s": 746,
+        "finish_from_run_s": 773
+      },
+      {
+        "id": 131051867684,
+        "name": "Web",
+        "conclusion": "success",
+        "start": "2026-11-12T08:01:06Z",
+        "end": "2026-11-12T08:03:51Z",
+        "duration_s": 165,
+        "finish_from_run_s": 192
+      },
+      {
+        "id": 131051867719,
+        "name": "Rust",
+        "conclusion": "success",
+        "start": "2026-11-12T08:01:06Z",
+        "end": "2026-11-12T08:13:48Z",
+        "duration_s": 762,
+        "finish_from_run_s": 789
+      },
+      {
+        "id": 131051867900,
+        "name": "Test (Rust, realtime)",
+        "conclusion": "success",
+        "start": "2026-11-12T08:01:06Z",
+        "end": "2026-11-12T08:14:41Z",
+        "duration_s": 815,
+        "finish_from_run_s": 842
+      },
+      {
+        "id": 131053518541,
+        "name": "C# / ARM64 runner (signal-only)",
+        "conclusion": "skipped",
+        "start": "2026-11-12T08:04:54Z",
+        "end": "2026-11-12T08:04:54Z",
+        "duration_s": 0,
+        "finish_from_run_s": 255
+      },
+      {
+        "id": 131058908266,
+        "name": "Gate",
+        "conclusion": "success",
+        "start": "2026-11-12T08:17:10Z",
+        "end": "2026-11-12T08:17:13Z",
+        "duration_s": 3,
+        "finish_from_run_s": 994
+      }
+    ]
+  },
+  {
+    "label": "batch1-warm",
+    "id": 43181943749,
+    "url": "https://github.com/kaito-harry/actrium/actions/runs/43181943749",
+    "sha": "9cf6a9e37eb7e51b879d3ceb39a2bf01af19dec9",
+    "created_at": "2026-11-12T08:19:05Z",
+    "updated_at": "2026-11-12T08:34:28Z",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "id": 131059793835,
+        "name": "Determine Affected Targets",
+        "conclusion": "success",
+        "start": "2026-11-12T08:19:08Z",
+        "end": "2026-11-12T08:19:15Z",
+        "duration_s": 7,
+        "finish_from_run_s": 10
+      },
+      {
+        "id": 131059793841,
+        "name": "Commit Identity Privacy",
+        "conclusion": "success",
+        "start": "2026-11-12T08:19:08Z",
+        "end": "2026-11-12T08:19:16Z",
+        "duration_s": 8,
+        "finish_from_run_s": 11
+      },
+      {
+        "id": 131059793853,
+        "name": "Language Policy",
+        "conclusion": "success",
+        "start": "2026-11-12T08:19:08Z",
+        "end": "2026-11-12T08:19:34Z",
+        "duration_s": 26,
+        "finish_from_run_s": 29
+      },
+      {
+        "id": 131059862855,
+        "name": "Rust E2E Compile",
+        "conclusion": "success",
+        "start": "2026-11-12T08:19:18Z",
+        "end": "2026-11-12T08:24:31Z",
+        "duration_s": 313,
+        "finish_from_run_s": 326
+      },
+      {
+        "id": 131059862944,
+        "name": "Prepare CLI Web Runtime",
+        "conclusion": "success",
+        "start": "2026-11-12T08:19:17Z",
+        "end": "2026-11-12T08:19:29Z",
+        "duration_s": 12,
+        "finish_from_run_s": 24
+      },
+      {
+        "id": 131059862985,
+        "name": "Swift",
+        "conclusion": "success",
+        "start": "2026-11-12T08:19:20Z",
+        "end": "2026-11-12T08:25:27Z",
+        "duration_s": 367,
+        "finish_from_run_s": 382
+      },
+      {
+        "id": 131059863030,
+        "name": "TypeScript",
+        "conclusion": "success",
+        "start": "2026-11-12T08:19:18Z",
+        "end": "2026-11-12T08:22:11Z",
+        "duration_s": 173,
+        "finish_from_run_s": 186
+      },
+      {
+        "id": 131059863188,
+        "name": "WebRTC",
+        "conclusion": "success",
+        "start": "2026-11-12T08:19:18Z",
+        "end": "2026-11-12T08:30:33Z",
+        "duration_s": 675,
+        "finish_from_run_s": 688
+      },
+      {
+        "id": 131059863286,
+        "name": "C# / ActrSharp + fixture (win-x64 gate)",
+        "conclusion": "success",
+        "start": "2026-11-12T08:24:19Z",
+        "end": "2026-11-12T08:30:55Z",
+        "duration_s": 396,
+        "finish_from_run_s": 710
+      },
+      {
+        "id": 131059864386,
+        "name": "Dependency Audit",
+        "conclusion": "success",
+        "start": "2026-11-12T08:19:18Z",
+        "end": "2026-11-12T08:22:32Z",
+        "duration_s": 194,
+        "finish_from_run_s": 207
+      },
+      {
+        "id": 131059962676,
+        "name": "Web",
+        "conclusion": "success",
+        "start": "2026-11-12T08:19:31Z",
+        "end": "2026-11-12T08:21:48Z",
+        "duration_s": 137,
+        "finish_from_run_s": 163
+      },
+      {
+        "id": 131059962704,
+        "name": "Rust",
+        "conclusion": "success",
+        "start": "2026-11-12T08:19:31Z",
+        "end": "2026-11-12T08:31:55Z",
+        "duration_s": 744,
+        "finish_from_run_s": 770
+      },
+      {
+        "id": 131059962748,
+        "name": "Test (Rust, realtime)",
+        "conclusion": "success",
+        "start": "2026-11-12T08:19:31Z",
+        "end": "2026-11-12T08:32:31Z",
+        "duration_s": 780,
+        "finish_from_run_s": 806
+      },
+      {
+        "id": 131059962796,
+        "name": "E2E Package Runtime",
+        "conclusion": "success",
+        "start": "2026-11-12T08:19:31Z",
+        "end": "2026-11-12T08:29:57Z",
+        "duration_s": 626,
+        "finish_from_run_s": 652
+      },
+      {
+        "id": 131059962806,
+        "name": "Rust MSRV (1.95)",
+        "conclusion": "success",
+        "start": "2026-11-12T08:19:32Z",
+        "end": "2026-11-12T08:34:27Z",
+        "duration_s": 895,
+        "finish_from_run_s": 922
+      },
+      {
+        "id": 131059962920,
+        "name": "Test (Rust, rest)",
+        "conclusion": "success",
+        "start": "2026-11-12T08:19:32Z",
+        "end": "2026-11-12T08:30:38Z",
+        "duration_s": 666,
+        "finish_from_run_s": 693
+      },
+      {
+        "id": 131065160363,
+        "name": "C# / ARM64 runner (signal-only)",
+        "conclusion": "skipped",
+        "start": "2026-11-12T08:30:55Z",
+        "end": "2026-11-12T08:30:55Z",
+        "duration_s": 0,
+        "finish_from_run_s": 710
+      },
+      {
+        "id": 131065890075,
+        "name": "Gate",
+        "conclusion": "success",
+        "start": "2026-11-12T08:32:34Z",
+        "end": "2026-11-12T08:32:38Z",
+        "duration_s": 4,
+        "finish_from_run_s": 813
+      }
+    ]
+  }
+]
