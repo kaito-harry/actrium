@@ -1,0 +1,167 @@
+name: CI15 phase2 realtime partition
+'on':
+  push:
+    branches:
+    - experiment/ci15-phase2-realtime-20261112
+permissions:
+  contents: read
+jobs:
+  cli_web_assets:
+    name: Prepare CLI Web Runtime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+    env:
+      RUSTUP_TOOLCHAIN: 1.99.0
+      RUSTC_WRAPPER: sccache
+      SCCACHE_GHA_ENABLED: 'true'
+      SCCACHE_GHA_VERSION: ci15-20261112-v1-batch1
+    steps:
+    - uses: actions/checkout@v5
+    - name: Cache CLI web runtime assets
+      id: cli-web-assets
+      uses: actions/cache@v4
+      with:
+        path: packages/actr-web/dist/sw
+        key: "ci15-20261112-v1-batch1-cli-web-runtime-v5-rust1.99.0-wp0.15.0-pc${{ vars.PROTOC_VERSION || '29.3' }}-${{ hashFiles(\n  'Cargo.toml', 'Cargo.lock', 'rust-toolchain*', '.cargo/config.toml',\n  'packages/actr-web/Cargo.toml', 'packages/actr-web/Cargo.lock',\n  'packages/actr-web/.cargo/config.toml', 'packages/actr-web/rust-toolchain*',\n  'packages/actr-web/packages/**', 'packages/actr-web/crates/**',\n  'packages/actr-web/scripts/**', 'tools/ci/wasm-bindgen/**', 'crates/actr-protocol/**',\n  'crates/actr-framework/**', 'crates/actr-platform-traits/**',\n  'crates/actr-pack/**', 'crates/actr-runtime-mailbox/**',\n  'crates/actr-relay-security/**') }}"
+    - name: Check cached Web runtime
+      id: web-runtime
+      env:
+        CACHE_HIT: ${{ steps.cli-web-assets.outputs.cache-hit }}
+      run: "dist=packages/actr-web/dist/sw\nready=false\nif [[ \"$CACHE_HIT\" == true && -s \"$dist/actr_sw_host_bg.wasm\" &&\n      -s \"$dist/actr_sw_host.js\" && -s \"$dist/actr_sw_host.d.ts\" &&\n      -s \"$dist/package.json\" ]]; then\n  ready=true\nfi\necho \"ready=$ready\" >> \"$GITHUB_OUTPUT\"\n"
+    - name: Prepare Linux build space
+      if: steps.web-runtime.outputs.ready != 'true'
+      uses: ./.github/actions/prepare-linux-build
+    - name: Setup Rust
+      if: steps.web-runtime.outputs.ready != 'true'
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        targets: wasm32-unknown-unknown
+    - name: Install protoc
+      if: steps.web-runtime.outputs.ready != 'true'
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - name: Run sccache-cache
+      if: steps.web-runtime.outputs.ready != 'true'
+      uses: mozilla-actions/sccache-action@v0.0.9
+      with:
+        version: v0.18.0
+    - name: Cache cold web-build dependencies
+      if: steps.web-runtime.outputs.ready != 'true'
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: packages/actr-web -> ../../target/bindings-web
+        cache-bin: false
+        shared-key: cli-web-assets
+        prefix-key: ci15-20261112-v1-batch1
+    - name: Install pinned prebuilt WebAssembly tools
+      uses: ./.github/actions/install-wasm-tools
+      with:
+        wasm-pack-only: 'true'
+      if: steps.web-runtime.outputs.ready != 'true'
+    - name: Build CLI web runtime assets
+      if: steps.web-runtime.outputs.ready != 'true'
+      run: bash packages/actr-web/scripts/sync-cli-assets.sh --build
+    - name: Sync cached CLI web runtime assets
+      if: steps.web-runtime.outputs.ready == 'true'
+      run: bash packages/actr-web/scripts/sync-cli-assets.sh
+    - name: Verify Web runtime before uploading
+      run: "for file in actr_sw_host_bg.wasm actr_sw_host.js actr_sw_host.d.ts package.json; do\n  test -s \"packages/actr-web/dist/sw/$file\" || { echo \"Missing Web runtime output: $file\" >&2; exit 1; }\ndone\nbash packages/actr-web/scripts/sync-cli-assets.sh --check\n"
+    - name: Upload CLI web runtime assets
+      uses: actions/upload-artifact@v4
+      with:
+        name: cli-web-runtime
+        path: 'crates/actr-cli/assets/web-runtime/actr_sw_host_bg.wasm
+
+          crates/actr-cli/assets/web-runtime/actr_sw_host.js
+
+          '
+        if-no-files-found: error
+        retention-days: 1
+    - name: Upload sw-host runtime assets
+      uses: actions/upload-artifact@v4
+      with:
+        name: sw-host-runtime
+        path: packages/actr-web/dist/sw/
+        if-no-files-found: error
+        retention-days: 1
+    - name: Disk usage at end
+      if: always()
+      run: df -h /; du -sh target 2>/dev/null || true
+  test:
+    name: Realtime split experiment (${{ matrix.shard }})
+    needs:
+    - cli_web_assets
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        shard:
+        - whole
+        - build-heavy
+        - network
+    env:
+      CARGO_TERM_COLOR: always
+      RUST_BACKTRACE: 1
+      ACTR_REQUIRE_WASM_FIXTURE: '1'
+      ACTR_REQUIRE_NON_LOOPBACK_IPV4: '1'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+      RUSTC_WRAPPER: sccache
+      SCCACHE_GHA_ENABLED: 'true'
+      REALTIME_BINARIES: binary(mobile_rtc_pair_contract) | binary(mobile_rtc_multi_peer) | (package(actr-hyper) and test(/^connection_governance_matrix::/)) | (package(actr-hyper) and test(/^connection_governance_production::/)) | (package(actr-hyper) and test(/^connection_governance_inflight::/)) | binary(recovery_attempt_timer) | binary(webrtc_large_mobile_recovery) | binary(mobile_full_disconnect_recovery) | binary(mobile_network_event_scenarios) | binary(ice_restart) | binary(ice_restart_with_signaling_disruption) | binary(ice_restart_unilateral_outage) | binary(turn_credential_rotation) | binary(webrtc_large_data_transfer) | binary(webrtc_initial_connection_timeout) | binary(media_loopback) | binary(dynclib_actor_e2e) | binary(rust_echo) | binary(outproc_disconnect_reconnect) | binary(outproc_connection_rebuild) | binary(recovery_vnet_supervisor) | binary(mock_loran_integration)
+      SCCACHE_GHA_VERSION: ci15-p2-realtime-${{ matrix.shard }}-20261112
+    steps:
+    - uses: actions/checkout@v5
+    - name: Prepare Linux build space
+      uses: ./.github/actions/prepare-linux-build
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        components: rust-src
+        targets: wasm32-wasip2,wasm32-unknown-unknown
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - name: Verify actr-hyper WIT drift
+      run: 'cmp crates/actr-framework/wit-v2/actr-workload.wit crates/actr-hyper/wit-v2/actr-workload.wit
+
+        '
+    - name: Run sccache-cache
+      uses: mozilla-actions/sccache-action@v0.0.9
+      with:
+        version: v0.18.0
+    - name: Install pinned prebuilt WebAssembly tools
+      uses: ./.github/actions/install-wasm-tools
+    - name: Download CLI web runtime assets
+      uses: actions/download-artifact@v4
+      with:
+        name: cli-web-runtime
+        path: crates/actr-cli/assets/web-runtime
+    - name: Sync CLI source assets
+      run: 'test -s crates/actr-cli/assets/web-runtime/actr_sw_host_bg.wasm
+
+        test -s crates/actr-cli/assets/web-runtime/actr_sw_host.js
+
+        bash packages/actr-web/scripts/sync-cli-assets.sh --skip-sw-host
+
+        '
+    - name: Install cargo-nextest
+      uses: taiki-e/install-action@cargo-nextest
+    - name: Assert exact inventory partition and run unchanged tests
+      run: "cargo metadata --format-version 1 --all-features --locked > \"$RUNNER_TEMP/meta.json\"\ncargo nextest list --workspace --all-features --list-type binaries-only --message-format json > \"$RUNNER_TEMP/binaries.json\"\nfor shard in whole build-heavy network; do\n  filter=\"$REALTIME_BINARIES\"\n  if [ \"$shard\" = build-heavy ]; then filter=\"($REALTIME_BINARIES) and (binary(rust_echo) | binary(dynclib_actor_e2e))\"; fi\n  if [ \"$shard\" = network ]; then filter=\"($REALTIME_BINARIES) and not(binary(rust_echo) | binary(dynclib_actor_e2e))\"; fi\n  cargo nextest list --cargo-metadata \"$RUNNER_TEMP/meta.json\" --binaries-metadata \"$RUNNER_TEMP/binaries.json\" -E \"$filter\" --message-format json > \"$RUNNER_TEMP/$shard.json\"\n  if [ \"$shard\" = '${{ matrix.shard }}' ]; then selected=\"$filter\"; fi\ndone\npython3 - <<'PYX'\nimport json,os\nfrom pathlib import Path\np=Path(os.environ['RUNNER_TEMP'])\ndef selected(name):\n d=json.loads((p/(name+'.json')).read_text()); return {(s['binary-id'],n)\
+        \ for s in d['rust-suites'].values() for n,t in s.get('testcases',{}).items() if not t['ignored'] and t['filter-match']['status']=='matches'}\nw,a,b=map(selected,['whole','build-heavy','network'])\nassert a|b==w and not a&b\nassert (len(w),len(a),len(b))==(195,24,171),(len(w),len(a),len(b))\nprint('Exact disjoint coverage verified: 195 = 24 + 171')\nPYX\ncargo nextest run --cargo-metadata \"$RUNNER_TEMP/meta.json\" --binaries-metadata \"$RUNNER_TEMP/binaries.json\" --no-fail-fast -E \"$selected\"\n"
+    - name: sccache stats
+      if: always()
+      run: sccache --show-stats || true
+    - name: Disk usage at end
+      if: always()
+      run: df -h /; du -sh target 2>/dev/null || true
