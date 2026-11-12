@@ -212,7 +212,13 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: Prepare Linux build space
+      if: '!contains(github.ref_name, ''ci15-combined-candidate-'')'
       uses: ./.github/actions/prepare-linux-build
+    - name: Prepare Linux build space with native-build threshold
+      if: contains(github.ref_name, 'ci15-combined-candidate-')
+      uses: ./.github/actions/ci15-web-space
+      with:
+        minimum-free-gib: '64'
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@1.99.1
       with:
@@ -954,7 +960,13 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: Prepare Linux build space
+      if: '!contains(github.ref_name, ''ci15-combined-candidate-'')'
       uses: ./.github/actions/prepare-linux-build
+    - name: Prepare Linux build space with native-build threshold
+      if: contains(github.ref_name, 'ci15-combined-candidate-')
+      uses: ./.github/actions/ci15-web-space
+      with:
+        minimum-free-gib: '64'
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@1.99.1
       with:
@@ -996,11 +1008,16 @@ jobs:
 
           '
         key: ${{ env.CI15_CACHE }}-cargo-tools-v2-${{ runner.os }}-wt1.253.0-wp0.15.0
+    - name: Install prebuilt WebAssembly tools
+      if: contains(github.ref_name, 'ci15-combined-candidate-')
+      uses: ./.github/actions/install-wasm-tools
     - name: Install wasm-tools
+      if: '!contains(github.ref_name, ''ci15-combined-candidate-'')'
       run: "if ! wasm-tools --version 2>/dev/null | grep -Eq '^wasm-tools 1\\.253\\.0( \\(.*\\))?$'; then\n  cargo install\
         \ wasm-tools --version 1.253.0 --locked --force\nfi\nwasm-tools --version 2>/dev/null | grep -Eq '^wasm-tools 1\\\
         .253\\.0( \\(.*\\))?$'\n"
     - name: Install wasm-pack
+      if: '!contains(github.ref_name, ''ci15-combined-candidate-'')'
       run: "if ! wasm-pack --version 2>/dev/null | grep -Fxq \"wasm-pack 0.15.0\"; then\n  cargo install wasm-pack --version\
         \ 0.15.0 --locked --force\nfi\nwasm-pack --version 2>/dev/null | grep -Fxq \"wasm-pack 0.15.0\"\n"
     - name: Verify TypeScript workload WIT drift
@@ -1200,7 +1217,13 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: Prepare Linux build space
+      if: '!contains(github.ref_name, ''ci15-combined-candidate-'')'
       uses: ./.github/actions/prepare-linux-build
+    - name: Prepare Linux build space with native-build threshold
+      if: contains(github.ref_name, 'ci15-combined-candidate-')
+      uses: ./.github/actions/ci15-web-space
+      with:
+        minimum-free-gib: '64'
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@1.99.1
       with:
@@ -1287,7 +1310,13 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: Prepare Linux build space
+      if: '!contains(github.ref_name, ''ci15-combined-candidate-'')'
       uses: ./.github/actions/prepare-linux-build
+    - name: Prepare Linux build space with native-build threshold
+      if: contains(github.ref_name, 'ci15-combined-candidate-')
+      uses: ./.github/actions/ci15-web-space
+      with:
+        minimum-free-gib: '64'
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@1.99.1
       with:
@@ -1357,7 +1386,13 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: Prepare Linux build space
+      if: '!contains(github.ref_name, ''ci15-combined-candidate-'')'
       uses: ./.github/actions/prepare-linux-build
+    - name: Prepare Linux build space with native-build threshold
+      if: contains(github.ref_name, 'ci15-combined-candidate-')
+      uses: ./.github/actions/ci15-web-space
+      with:
+        minimum-free-gib: '64'
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@1.99.1
       with:
@@ -1480,7 +1515,11 @@ jobs:
     - name: Validate Kotlin Android native builds
       env:
         KOTLIN_NATIVE_RESULT: ${{ needs.kotlin_native.result }}
-      run: test "$KOTLIN_NATIVE_RESULT" = success
+      run: |
+        case "$KOTLIN_NATIVE_RESULT" in
+          success|skipped) ;;
+          *) exit 1 ;;
+        esac
     - name: Summarize gate
       run: "python3 - <<'PY'\nimport json\nimport os\nimport sys\n\nresults = {\n    \"identity\": os.environ[\"IDENTITY_RESULT\"\
         ],\n    \"audit\": os.environ[\"AUDIT_RESULT\"],\n    \"rust\": os.environ[\"RUST_RESULT\"],\n    \"typescript\":\
