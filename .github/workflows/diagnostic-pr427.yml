@@ -38,27 +38,16 @@ jobs:
           from pathlib import Path
           p = Path("crates/actr-hyper/tests/support/connection_governance_production.rs")
           s = p.read_text()
-          old = """            for (i, prior) in previous.iter().enumerate() {
-                          pair.rtc[i]
-                              .wait_state(&pair.nodes[1 - i].actor_id(), WAIT, |s| {
-                                  s.sendable && s.pc_generation > prior.pc_generation
-                              })
-                              .await
-                              .unwrap();
-                      }"""
-          new = """            for (i, prior) in previous.iter().enumerate() {
-                          pair.rtc[i]
-                              .wait_state_diagnosed(&pair.nodes[1 - i].actor_id(), WAIT, |s| {
-                                  s.sendable && s.pc_generation > prior.pc_generation
-                              })
-                              .await
-                              .unwrap_or_else(|e| panic!("cycle={cycle} peer_index={i} prior={prior:?}: {e}"));
-                      }"""
-          # Normalize the indentation introduced by this embedded script.
-          old = "\n".join(line[10:] if n else line for n, line in enumerate(old.splitlines()))
-          new = "\n".join(line[10:] if n else line for n, line in enumerate(new.splitlines()))
-          assert old in s, "diagnostic insertion anchor changed"
-          p.write_text(s.replace(old, new, 1))
+          start = s.index("async fn repeated_cycles")
+          end = s.index("#[tokio::test", start)
+          block = s[start:end]
+          assert block.count(".wait_state(") == 1
+          block = block.replace(".wait_state(", ".wait_state_diagnosed(")
+          import re
+          block, count = re.subn(r"(\.wait_state_diagnosed\([\s\S]*?\.await\s*)\.unwrap\(\);",
+              lambda m: m.group(1) + '.unwrap_or_else(|e| panic!("cycle={cycle} peer_index={i} prior={prior:?}: {e}"));', block)
+          assert count == 1, count
+          p.write_text(s[:start] + block + s[end:])
           PY
           git diff --check
           git diff -- crates/actr-hyper/tests/support/connection_governance_production.rs
