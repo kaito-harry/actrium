@@ -1,0 +1,18 @@
+name: CI12 macOS runner availability probe
+on:
+  push:
+    branches: [experiment/ci12-macos-runner-probe]
+jobs:
+  probe:
+    name: Probe ${{ matrix.runner }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-latest, macos-15]
+    steps:
+      - name: Record runner environment
+        run: |
+          sw_vers
+          xcodebuild -version
+          uname -m
