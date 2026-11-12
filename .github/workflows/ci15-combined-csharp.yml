@@ -1,0 +1,225 @@
+name: CI15 Combined CI (C#)
+permissions:
+  contents: read
+env:
+  DOTNET_NOLOGO: '1'
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  CI15_CACHE: ${{ inputs.experiment_namespace }}
+  SCCACHE_GHA_VERSION: ${{ inputs.experiment_namespace }}
+jobs:
+  build:
+    name: ActrSharp + fixture (${{ inputs.full_matrix && 'full matrix' || 'win-x64 gate' }})
+    runs-on: windows-latest
+    env:
+      ACTR_CSHARP_FULL_MATRIX: ${{ inputs.full_matrix }}
+    steps:
+    - uses: actions/checkout@v5
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        targets: ${{ inputs.full_matrix && 'x86_64-pc-windows-msvc aarch64-pc-windows-msvc' || 'x86_64-pc-windows-msvc' }}
+    - uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: tests/e2e/actr/winui-echo-app/workload
+        cache-on-failure: true
+        prefix-key: ${{ env.CI15_CACHE }}-rust
+      id: ci15-cache-2
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - name: Build EchoWorkload cdylib
+      shell: pwsh
+      run: "$workload = \"tests/e2e/actr/winui-echo-app/workload/Cargo.toml\"\n$cargoProfile = if ($env:ACTR_CSHARP_FULL_MATRIX\
+        \ -eq \"true\") { \"release\" } else { \"ci\" }\n$profileArgs = if ($cargoProfile -eq \"release\") { @(\"--release\"\
+        ) } else { @(\"--profile\", \"ci\") }\n\n$x64Args = @(\"build\", \"--manifest-path\", $workload, \"--locked\") +\n\
+        \  $profileArgs + @(\"--target\", \"x86_64-pc-windows-msvc\")\n& cargo @x64Args\nif ($LASTEXITCODE -ne 0) { throw\
+        \ \"win-x64 cargo build failed (exit $LASTEXITCODE)\" }\n\n$fixtureRun = \"packages/actr-cabi/csharp/tests/EchoWorkloadFixture/runtimes\"\
+        \nNew-Item -ItemType Directory -Force -Path \"$fixtureRun/win-x64/native\" | Out-Null\nCopy-Item `\n  \"tests/e2e/actr/winui-echo-app/workload/target/x86_64-pc-windows-msvc/$cargoProfile/winui_echo_app_workload.dll\"\
+        \ `\n  \"$fixtureRun/win-x64/native/actr_cabi.dll\"\n\nif ($env:ACTR_CSHARP_FULL_MATRIX -eq \"true\") {\n  $arm64Args\
+        \ = @(\"build\", \"--manifest-path\", $workload, \"--locked\") +\n    $profileArgs + @(\"--target\", \"aarch64-pc-windows-msvc\"\
+        )\n  & cargo @arm64Args\n  if ($LASTEXITCODE -ne 0) { throw \"win-arm64 cargo build failed (exit $LASTEXITCODE)\"\
+        \ }\n  New-Item -ItemType Directory -Force -Path \"$fixtureRun/win-arm64/native\" | Out-Null\n  Copy-Item `\n    \"\
+        tests/e2e/actr/winui-echo-app/workload/target/aarch64-pc-windows-msvc/$cargoProfile/winui_echo_app_workload.dll\"\
+        \ `\n    \"$fixtureRun/win-arm64/native/actr_cabi.dll\"\n}\nWrite-Host \"Built ActrSharp fixture profile=$cargoProfile\
+        \ full_matrix=$env:ACTR_CSHARP_FULL_MATRIX\"\n"
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.0.x
+    - name: Verify version sync (Cargo == ActrSharp.csproj)
+      shell: pwsh
+      run: "$cargo = (Get-Content Cargo.toml | Select-String '^version = \"(.+)\"' |\n          Select-Object -First 1).Matches.Groups[1].Value\n\
+        $csproj = (Get-Content packages/actr-cabi/csharp/ActrSharp/ActrSharp.csproj |\n           Select-String '<Version>(.+)</Version>'\
+        \ |\n           Select-Object -First 1).Matches.Groups[1].Value\nWrite-Host \"Cargo workspace=$cargo  ActrSharp.csproj=$csproj\"\
+        \nif ($cargo -ne $csproj) {\n  throw \"Version mismatch: Cargo=$cargo ActrSharp.csproj=$csproj \u2014 bump both together.\"\
+        \n}\n\"ACTR_VERSION=$cargo\" | Out-File -FilePath $env:GITHUB_ENV -Append\n"
+    - name: dotnet format (verify no changes)
+      shell: pwsh
+      run: 'dotnet format packages/actr-cabi/csharp/ActrSharp/ActrSharp.csproj --verify-no-changes
+
+        dotnet format packages/actr-cabi/csharp/tests/ActrSharp.Tests/ActrSharp.Tests.csproj --verify-no-changes
+
+        '
+    - name: Restore + build ActrSharp
+      shell: pwsh
+      run: "dotnet restore packages/actr-cabi/csharp/ActrSharp/ActrSharp.csproj\ndotnet build packages/actr-cabi/csharp/ActrSharp/ActrSharp.csproj\
+        \ `\n  --no-restore --configuration Release -p:Version=$env:ACTR_VERSION\n"
+    - name: Test ActrSharp (managed)
+      shell: pwsh
+      run: "# --runtime win-x64 guarantees RuntimeInformation.RuntimeIdentifier is\n# non-empty so the negative tests can\
+        \ assert ex.Rid is populated.\ndotnet test packages/actr-cabi/csharp/tests/ActrSharp.Tests/ActrSharp.Tests.csproj\
+        \ `\n  --configuration Release --runtime win-x64 --logger \"console;verbosity=normal\"\n"
+    - name: Pack ActrSharp (nupkg + snupkg)
+      shell: pwsh
+      run: "$artifacts = \"$PWD/artifacts\"\nNew-Item -ItemType Directory -Force -Path $artifacts | Out-Null\ndotnet pack\
+        \ packages/actr-cabi/csharp/ActrSharp/ActrSharp.csproj `\n  --no-build --configuration Release `\n  -p:Version=$env:ACTR_VERSION\
+        \ -p:PackageOutputPath=$artifacts\nGet-ChildItem $artifacts | ForEach-Object { Write-Host \"  $($_.Name)\" }\n"
+    - name: Set up local NuGet feed
+      shell: pwsh
+      run: "$feed = \"$PWD/.ci-feed\"\nNew-Item -ItemType Directory -Force -Path $feed | Out-Null\nCopy-Item \"artifacts/ActrSharp.$env:ACTR_VERSION.nupkg\"\
+        \ $feed\nCopy-Item \"artifacts/ActrSharp.$env:ACTR_VERSION.snupkg\" $feed\n\"CI_FEED=$feed\" | Out-File -FilePath\
+        \ $env:GITHUB_ENV -Append\n# Write a nuget.config at the C# root so the fixture pack (which\n# PackageReferences ActrSharp\
+        \ [ver]) can resolve it from the local\n# feed \u2014 ActrSharp is not on nuget.org. Public SDK/runtime packages\n\
+        # remain mapped to nuget.org. NuGet walks up from the fixture csproj\n# and finds this config.\n$feedPath = $feed.Replace('\\\
+        ', '/')\n$cfg = @(\n  '<?xml version=\"1.0\" encoding=\"utf-8\"?>',\n  '<configuration>',\n  '  <packageSources>',\n\
+        \  '    <clear />',\n  \"    <add key=`\"actr-local`\" value=`\"$feedPath`\" />\",\n  '    <add key=\"nuget.org\"\
+        \ value=\"https://api.nuget.org/v3/index.json\" protocolVersion=\"3\" />',\n  '  </packageSources>',\n  '  <packageSourceMapping>',\n\
+        \  '    <clear />',\n  '    <packageSource key=\"actr-local\">',\n  '      <package pattern=\"ActrSharp\" />',\n \
+        \ '      <package pattern=\"ActrSharp.*\" />',\n  '    </packageSource>',\n  '    <packageSource key=\"nuget.org\"\
+        >',\n  '      <package pattern=\"*\" />',\n  '    </packageSource>',\n  '  </packageSourceMapping>',\n  '</configuration>'\n\
+        )\n($cfg -join \"`n\") | Set-Content -Path packages/actr-cabi/csharp/nuget.config -Encoding utf8\nWrite-Host \"Local\
+        \ feed at $feed (nuget.config written)\"\n"
+    - name: Pack EchoWorkload fixture
+      shell: pwsh
+      run: "dotnet pack packages/actr-cabi/csharp/tests/EchoWorkloadFixture/EchoWorkloadFixture.csproj `\n  --configuration\
+        \ Release `\n  -p:Version=$env:ACTR_VERSION -p:ActrSharpVersion=$env:ACTR_VERSION `\n  -p:PackageOutputPath=$PWD/artifacts\n\
+        Copy-Item \"artifacts/ActrSharp.Native.EchoWorkload.$env:ACTR_VERSION.nupkg\" $env:CI_FEED\n"
+    - name: Verify ActrSharp nupkg contents (managed-only, no native DLL)
+      shell: pwsh
+      run: "Add-Type -AssemblyName System.IO.Compression.FileSystem\n$nupkg = \"artifacts/ActrSharp.$env:ACTR_VERSION.nupkg\"\
+        \n$zip = [System.IO.Compression.ZipFile]::OpenRead($nupkg)\n$entries = $zip.Entries | ForEach-Object { $_.FullName\
+        \ }\n$zip.Dispose()\n$entries | ForEach-Object { Write-Host \"  $_\" }\n$must = @(\"lib/net10.0/ActrSharp.dll\", \"\
+        README.md\", \"ActrSharp.nuspec\", \"[Content_Types].xml\")\nforeach ($e in $must) {\n  if ($entries -notcontains\
+        \ $e) { throw \"ActrSharp nupkg missing entry: $e\" }\n}\n$native = $entries | Where-Object { $_ -like \"runtimes/*\"\
+        \ -or $_ -like \"*/native/*\" }\nif ($native) { throw \"ActrSharp nupkg must not contain native assets: $native\"\
+        \ }\nWrite-Host \"ActrSharp nupkg is managed-only as expected.\"\n"
+    - name: Verify fixture nupkg contents (RID paths, strict dep, PE architecture)
+      shell: pwsh
+      run: "Add-Type -AssemblyName System.IO.Compression.FileSystem\n$nupkg = \"artifacts/ActrSharp.Native.EchoWorkload.$env:ACTR_VERSION.nupkg\"\
+        \n$zip = [System.IO.Compression.ZipFile]::OpenRead($nupkg)\n$entries = $zip.Entries | ForEach-Object { $_.FullName\
+        \ }\n$zip.Dispose()\n$entries | ForEach-Object { Write-Host \"  $_\" }\n\n$x64 = \"runtimes/win-x64/native/actr_cabi.dll\"\
+        \n$arm64 = \"runtimes/win-arm64/native/actr_cabi.dll\"\n$must = @($x64, \"lib/net10.0/EchoWorkloadFixture.dll\", \"\
+        README.md\")\nif ($env:ACTR_CSHARP_FULL_MATRIX -eq \"true\") { $must += $arm64 }\nforeach ($e in $must) {\n  if ($entries\
+        \ -notcontains $e) { throw \"fixture nupkg missing entry: $e\" }\n}\n\n# Strict (exact) ActrSharp dependency: the\
+        \ fixture must pin the version\n# it was built against, never a floating minimum.\n$nuspecEntry = $entries | Where-Object\
+        \ { $_ -like \"*.nuspec\" } | Select-Object -First 1\n$zip = [System.IO.Compression.ZipFile]::OpenRead($nupkg)\n$reader\
+        \ = New-Object System.IO.StreamReader(($zip.GetEntry($nuspecEntry).Open()))\n$nuspec = $reader.ReadToEnd()\n$reader.Close();\
+        \ $zip.Dispose()\nif ($nuspec -notmatch ('id=\"ActrSharp\"\\s+version=\"\\[' + [regex]::Escape($env:ACTR_VERSION)\
+        \ + '\\]\"')) {\n  throw \"fixture must declare exact dependency ActrSharp [$($env:ACTR_VERSION)]; nuspec does not\
+        \ match.\"\n}\nWrite-Host \"fixture declares strict ActrSharp [$($env:ACTR_VERSION)] dependency.\"\n\n# PE architecture:\
+        \ confirm each bundled DLL matches its RID.\nfunction Get-PeMachine([string]$path) {\n  $b = [System.IO.File]::ReadAllBytes($path)\n\
+        \  $peOff = [System.BitConverter]::ToInt32($b, 0x3C)\n  return ('0x{0:X4}' -f [System.BitConverter]::ToUInt16($b,\
+        \ $peOff + 4))\n}\n$x64Dll = \"packages/actr-cabi/csharp/tests/EchoWorkloadFixture/runtimes/win-x64/native/actr_cabi.dll\"\
+        \n$m1 = Get-PeMachine $x64Dll\nWrite-Host \"win-x64 PE machine=$m1 (expect 0x8664)\"\nif ($m1 -ne '0x8664') { throw\
+        \ \"win-x64 actr_cabi.dll is not AMD64 (got $m1)\" }\nif ($env:ACTR_CSHARP_FULL_MATRIX -eq \"true\") {\n  $armDll\
+        \ = \"packages/actr-cabi/csharp/tests/EchoWorkloadFixture/runtimes/win-arm64/native/actr_cabi.dll\"\n  $m2 = Get-PeMachine\
+        \ $armDll\n  Write-Host \"win-arm64 PE machine=$m2 (expect 0xAA64)\"\n  if ($m2 -ne '0xAA64') { throw \"win-arm64\
+        \ actr_cabi.dll is not ARM64 (got $m2)\" }\n}\n"
+    - name: Structural check (no publish path in PR CI; no fixture in publish)
+      shell: pwsh
+      run: "if (Select-String -Path .github/workflows/ci-csharp.yml -Pattern 'nuget\\s+push' -Quiet) {\n  throw \"ci-csharp.yml\
+        \ must not publish to a remote feed (the PR workflow only places packages in a local folder feed).\"\n}\nif (Test-Path\
+        \ .github/workflows/publish-actrsharp.yml) {\n  if (Select-String -Path .github/workflows/publish-actrsharp.yml -Pattern\
+        \ 'ActrSharp\\.Native' -Quiet) {\n    throw \"publish-actrsharp.yml must not reference the fixture package (ActrSharp.Native.*).\"\
+        \n  }\n}\nWrite-Host \"Structural checks passed.\"\n"
+    - name: Out-of-repo consumer (win-x64)
+      shell: pwsh
+      run: "$consumerDir = Join-Path $env:RUNNER_TEMP \"actrsharp-consumer\"\nNew-Item -ItemType Directory -Force -Path $consumerDir\
+        \ | Out-Null\nPush-Location $consumerDir\ndotnet new console -n Consumer -f net10.0\nSet-Location Consumer\n\n$feed\
+        \ = $env:CI_FEED.Replace('\\', '/')\n$cfg = @(\n  '<?xml version=\"1.0\" encoding=\"utf-8\"?>',\n  '<configuration>',\n\
+        \  '  <packageSources>',\n  '    <clear />',\n  \"    <add key=`\"actr-local`\" value=`\"$feed`\" />\",\n  '    <add\
+        \ key=\"nuget.org\" value=\"https://api.nuget.org/v3/index.json\" protocolVersion=\"3\" />',\n  '  </packageSources>',\n\
+        \  '  <packageSourceMapping>',\n  '    <clear />',\n  '    <packageSource key=\"actr-local\">',\n  '      <package\
+        \ pattern=\"ActrSharp\" />',\n  '      <package pattern=\"ActrSharp.*\" />',\n  '    </packageSource>',\n  '    <packageSource\
+        \ key=\"nuget.org\">',\n  '      <package pattern=\"*\" />',\n  '    </packageSource>',\n  '  </packageSourceMapping>',\n\
+        \  '</configuration>'\n)\n($cfg -join \"`n\") | Set-Content -Path nuget.config -Encoding utf8\n\ndotnet add package\
+        \ ActrSharp.Native.EchoWorkload --version $env:ACTR_VERSION\nCopy-Item \"$env:GITHUB_WORKSPACE/packages/actr-cabi/csharp/tests/EchoWorkloadFixture/consumer/Program.cs\"\
+        \ `\n  -Destination Program.cs -Force\n\ndotnet restore --runtime win-x64\ndotnet build --configuration Release --runtime\
+        \ win-x64 --no-restore\ndotnet run --configuration Release --runtime win-x64 --no-build\n\n# DLL auto-copy: actr_cabi.dll\
+        \ and ActrSharp.dll must land in the\n# output directory without any manual <None CopyToOutputDirectory>.\n$bin =\
+        \ Get-ChildItem -Recurse -Path bin -Filter \"actr_cabi.dll\" | Select-Object -First 1\nif (-not $bin) { throw \"actr_cabi.dll\
+        \ was not auto-copied to consumer output.\" }\n$asm = Get-ChildItem -Recurse -Path bin -Filter \"ActrSharp.dll\" |\
+        \ Select-Object -First 1\nif (-not $asm) { throw \"ActrSharp.dll was not auto-copied to consumer output.\" }\nWrite-Host\
+        \ \"Auto-copied: $($bin.FullName) and $($asm.FullName)\"\nPop-Location\n"
+    - name: Cross-build consumer (win-arm64)
+      if: inputs.full_matrix
+      shell: pwsh
+      run: "$consumerDir = Join-Path $env:RUNNER_TEMP \"actrsharp-consumer\"\n$consumerProject = Join-Path $consumerDir \"\
+        Consumer/Consumer.csproj\"\ndotnet restore $consumerProject --runtime win-arm64\ndotnet build $consumerProject `\n\
+        \  --runtime win-arm64 --configuration Release --no-restore `\n  /p:RuntimeIdentifier=win-arm64\nWrite-Host \"Consumer\
+        \ cross-builds for win-arm64 (restore + build, no run).\"\n"
+    - name: Upload packages (for ARM64 signal job)
+      if: inputs.full_matrix
+      uses: actions/upload-artifact@v4
+      with:
+        name: actrsharp-packages
+        if-no-files-found: error
+        path: 'artifacts/ActrSharp.${{ env.ACTR_VERSION }}.nupkg
+
+          artifacts/ActrSharp.${{ env.ACTR_VERSION }}.snupkg
+
+          artifacts/ActrSharp.Native.EchoWorkload.${{ env.ACTR_VERSION }}.nupkg
+
+          '
+    - name: Record observed cache outcomes
+      if: always()
+      env:
+        CI15_CACHE_REPORT: '[{"step": "ci15-cache-2", "action": "Swatinem/rust-cache@v2", "hit": "${{ steps.ci15-cache-2.outputs.cache-hit
+          }}", "outcome": "${{ steps.ci15-cache-2.outcome }}"}]'
+      run: echo "$CI15_CACHE_REPORT"; echo "$CI15_CACHE_REPORT" >> "$GITHUB_STEP_SUMMARY"
+  arm64-signal:
+    name: ARM64 runner (signal-only)
+    runs-on: windows-11-arm
+    needs: build
+    if: inputs.full_matrix && needs.build.result == 'success'
+    continue-on-error: true
+    steps:
+    - uses: actions/checkout@v5
+    - name: Download packages
+      uses: actions/download-artifact@v4
+      with:
+        name: actrsharp-packages
+        path: packages
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.0.x
+    - name: Out-of-repo consumer on ARM64
+      shell: pwsh
+      run: "$version = (Get-Content Cargo.toml | Select-String '^version = \"(.+)\"' |\n            Select-Object -First 1).Matches.Groups[1].Value\n\
+        $feed = \"$PWD/.ci-feed\"\nNew-Item -ItemType Directory -Force -Path $feed | Out-Null\nCopy-Item \"packages/*.nupkg\"\
+        \ $feed\nCopy-Item \"packages/*.snupkg\" $feed\n\n$consumerDir = Join-Path $env:RUNNER_TEMP \"actrsharp-arm64-consumer\"\
+        \nNew-Item -ItemType Directory -Force -Path $consumerDir | Out-Null\nPush-Location $consumerDir\ndotnet new console\
+        \ -n Consumer -f net10.0\nSet-Location Consumer\n\n$feedPath = $feed.Replace('\\', '/')\n$cfg = @(\n  '<?xml version=\"\
+        1.0\" encoding=\"utf-8\"?>',\n  '<configuration>',\n  '  <packageSources>',\n  '    <clear />',\n  \"    <add key=`\"\
+        actr-local`\" value=`\"$feedPath`\" />\",\n  '    <add key=\"nuget.org\" value=\"https://api.nuget.org/v3/index.json\"\
+        \ protocolVersion=\"3\" />',\n  '  </packageSources>',\n  '  <packageSourceMapping>',\n  '    <clear />',\n  '   \
+        \ <packageSource key=\"actr-local\">',\n  '      <package pattern=\"ActrSharp\" />',\n  '      <package pattern=\"\
+        ActrSharp.*\" />',\n  '    </packageSource>',\n  '    <packageSource key=\"nuget.org\">',\n  '      <package pattern=\"\
+        *\" />',\n  '    </packageSource>',\n  '  </packageSourceMapping>',\n  '</configuration>'\n)\n($cfg -join \"`n\")\
+        \ | Set-Content -Path nuget.config -Encoding utf8\n\ndotnet add package ActrSharp.Native.EchoWorkload --version $version\n\
+        Copy-Item \"$env:GITHUB_WORKSPACE/packages/actr-cabi/csharp/tests/EchoWorkloadFixture/consumer/Program.cs\" `\n  -Destination\
+        \ Program.cs -Force\n\ndotnet run --configuration Release\nPop-Location\n"
+'on':
+  workflow_call:
+    inputs:
+      full_matrix:
+        description: Build and validate both win-x64 and win-arm64 release fixtures.
+        required: false
+        type: boolean
+        default: false
+      experiment_namespace:
+        type: string
+        required: true

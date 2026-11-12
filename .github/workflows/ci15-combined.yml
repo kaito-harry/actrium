@@ -1,0 +1,1427 @@
+name: CI15 Combined Full Gate Experiment
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  identity:
+    name: Commit Identity Privacy
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Test identity policy
+      run: python .github/scripts/check_commit_identities_test.py
+    - name: Check newly introduced commits
+      env:
+        BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      run: python .github/scripts/check_commit_identities.py --base-sha "$BASE_SHA" --head-sha "$HEAD_SHA"
+  determine:
+    name: Determine Affected Targets
+    runs-on: ubuntu-24.04
+    outputs:
+      mode: ${{ steps.targets.outputs.mode }}
+      changed_files_json: ${{ steps.targets.outputs.changed_files_json }}
+      reasons_json: ${{ steps.targets.outputs.reasons_json }}
+      rust_core: ${{ steps.targets.outputs.rust_core }}
+      ts_binding: ${{ steps.targets.outputs.ts_binding }}
+      ts_workload: ${{ steps.targets.outputs.ts_workload }}
+      python_codegen: ${{ steps.targets.outputs.python_codegen }}
+      python_workload: ${{ steps.targets.outputs.python_workload }}
+      swift_binding: ${{ steps.targets.outputs.swift_binding }}
+      kotlin_binding: ${{ steps.targets.outputs.kotlin_binding }}
+      csharp_binding: ${{ steps.targets.outputs.csharp_binding }}
+      web_binding: ${{ steps.targets.outputs.web_binding }}
+      c_go_workloads: ${{ steps.targets.outputs.c_go_workloads }}
+      e2e_rust: ${{ steps.targets.outputs.e2e_rust }}
+      e2e_package_runtime: ${{ steps.targets.outputs.e2e_package_runtime }}
+      release_related: ${{ steps.targets.outputs.release_related }}
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Install SQLite CLI
+      run: "if ! command -v sqlite3 >/dev/null 2>&1; then\n  sudo apt-get update\n  sudo apt-get install -y sqlite3\nfi\n"
+    - name: Test SDK error message generation
+      run: python3 scripts/actr/tests/test_patch_error_messages.py
+    - name: Test mobile credential packaging gate
+      run: python3 scripts/actr/tests/test_check_mobile_assets.py
+    - name: Validate GitHub-hosted runner policy
+      run: 'python -m pip install --disable-pip-version-check -r .github/scripts/runner-policy-requirements.txt
+
+        python .github/scripts/check_workflow_runners_test.py
+
+        python .github/scripts/check_workflow_runners.py
+
+        '
+    - name: Test target detection
+      run: python .github/scripts/ci_targets_test.py
+    - name: Test CI configuration
+      run: python .github/scripts/ci_gate_test.py
+    - name: Test repository language policy
+      run: python .github/scripts/check_cjk_test.py
+    - id: targets
+      name: Compute targets
+      env:
+        EVENT_NAME: workflow_dispatch
+        BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        MANUAL_FULL: 'true'
+      run: "python .github/scripts/ci_targets.py \\\n  --event-name \"$EVENT_NAME\" \\\n  --base-sha \"$BASE_SHA\" \\\n  --head-sha\
+        \ \"$HEAD_SHA\" \\\n  --manual-full \"$MANUAL_FULL\"\n"
+    - name: Test experiment guard and partition assertions
+      run: python3 .github/scripts/ci15-combined-test.py
+    - name: Verify experiment variant and unchanged product source
+      env:
+        BASELINE_SOURCE: 9cf6a9e37eb7e51b879d3ceb39a2bf01af19dec9
+      run: "case \"$GITHUB_REF_NAME\" in\n  experiment/ci15-combined-baseline-*|experiment/ci15-combined-candidate-*) ;;\n\
+        \  *) echo 'Invalid experiment variant'; exit 1;;\nesac\ngit diff --exit-code \"$BASELINE_SOURCE\" HEAD -- . ':!.github'\
+        \ ':!tools/ci'\necho \"source=$BASELINE_SOURCE variant=$GITHUB_REF_NAME cache=$CI15_CACHE\" >> \"$GITHUB_STEP_SUMMARY\""
+  cli_web_assets:
+    name: Prepare CLI Web Runtime
+    needs: determine
+    if: needs.determine.outputs.rust_core == 'true' || needs.determine.outputs.e2e_package_runtime == 'true' || needs.determine.outputs.web_binding
+      == 'true' || needs.determine.outputs.kotlin_binding == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+    env:
+      RUSTUP_TOOLCHAIN: 1.99.0
+      RUSTC_WRAPPER: sccache
+      SCCACHE_GHA_ENABLED: 'true'
+    steps:
+    - uses: actions/checkout@v5
+    - name: Cache CLI web runtime assets
+      id: cli-web-assets
+      uses: actions/cache@v4
+      with:
+        path: packages/actr-web/dist/sw
+        key: "${{ env.CI15_CACHE }}-cli-web-runtime-v5-rust1.99.0-wp0.15.0-pc${{ vars.PROTOC_VERSION || '29.3' }}-${{ hashFiles(\n\
+          \  'Cargo.toml', 'Cargo.lock', 'rust-toolchain*', '.cargo/config.toml',\n  'packages/actr-web/Cargo.toml', 'packages/actr-web/Cargo.lock',\n\
+          \  'packages/actr-web/.cargo/config.toml', 'packages/actr-web/rust-toolchain*',\n  'packages/actr-web/packages/**',\
+          \ 'packages/actr-web/crates/**',\n  'packages/actr-web/scripts/**', 'tools/ci/wasm-bindgen/**', 'crates/actr-protocol/**',\n\
+          \  'crates/actr-framework/**', 'crates/actr-platform-traits/**',\n  'crates/actr-pack/**', 'crates/actr-runtime-mailbox/**',\n\
+          \  'crates/actr-relay-security/**') }}"
+    - name: Check cached Web runtime
+      id: web-runtime
+      env:
+        CACHE_HIT: ${{ steps.cli-web-assets.outputs.cache-hit }}
+      run: "dist=packages/actr-web/dist/sw\nready=false\nif [[ \"$CACHE_HIT\" == true && -s \"$dist/actr_sw_host_bg.wasm\"\
+        \ &&\n      -s \"$dist/actr_sw_host.js\" && -s \"$dist/actr_sw_host.d.ts\" &&\n      -s \"$dist/package.json\" ]];\
+        \ then\n  ready=true\nfi\necho \"ready=$ready\" >> \"$GITHUB_OUTPUT\"\n"
+    - name: Prepare Linux build space
+      if: (steps.web-runtime.outputs.ready != 'true') && (!contains(github.ref_name, 'ci15-combined-candidate-'))
+      uses: ./.github/actions/prepare-linux-build
+    - name: Candidate Web space guard
+      uses: ./.github/actions/ci15-web-space
+      if: (steps.web-runtime.outputs.ready != 'true') && (contains(github.ref_name, 'ci15-combined-candidate-'))
+    - name: Setup Rust
+      if: steps.web-runtime.outputs.ready != 'true'
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        targets: wasm32-unknown-unknown
+    - name: Install protoc
+      if: steps.web-runtime.outputs.ready != 'true'
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - name: Run sccache-cache
+      if: steps.web-runtime.outputs.ready != 'true'
+      uses: mozilla-actions/sccache-action@v0.0.9
+      with:
+        version: v0.18.0
+    - name: Cache cold web-build dependencies
+      if: steps.web-runtime.outputs.ready != 'true'
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: packages/actr-web -> ../../target/bindings-web
+        cache-bin: false
+        shared-key: cli-web-assets
+        prefix-key: ${{ env.CI15_CACHE }}-rust
+      id: ci15-cache-8
+    - name: Candidate shared prebuilt Wasm tools
+      uses: ./.github/actions/install-wasm-tools
+      if: (steps.web-runtime.outputs.ready != 'true') && (contains(github.ref_name, 'ci15-combined-candidate-'))
+      with:
+        wasm-pack-only: 'true'
+    - name: Install wasm-pack
+      if: (steps.web-runtime.outputs.ready != 'true') && (!contains(github.ref_name, 'ci15-combined-candidate-'))
+      run: "if ! wasm-pack --version 2>/dev/null | grep -Fxq \"wasm-pack 0.15.0\"; then\n  cargo install wasm-pack --version\
+        \ 0.15.0 --locked --force\nfi\nwasm-pack --version 2>/dev/null | grep -Fxq \"wasm-pack 0.15.0\"\n"
+    - name: Build CLI web runtime assets
+      if: steps.web-runtime.outputs.ready != 'true'
+      run: bash packages/actr-web/scripts/sync-cli-assets.sh --build
+    - name: Sync cached CLI web runtime assets
+      if: steps.web-runtime.outputs.ready == 'true'
+      run: bash packages/actr-web/scripts/sync-cli-assets.sh
+    - name: Verify Web runtime before uploading
+      run: "for file in actr_sw_host_bg.wasm actr_sw_host.js actr_sw_host.d.ts package.json; do\n  test -s \"packages/actr-web/dist/sw/$file\"\
+        \ || { echo \"Missing Web runtime output: $file\" >&2; exit 1; }\ndone\nbash packages/actr-web/scripts/sync-cli-assets.sh\
+        \ --check\n"
+    - name: Upload CLI web runtime assets
+      uses: actions/upload-artifact@v4
+      with:
+        name: cli-web-runtime
+        path: 'crates/actr-cli/assets/web-runtime/actr_sw_host_bg.wasm
+
+          crates/actr-cli/assets/web-runtime/actr_sw_host.js
+
+          '
+        if-no-files-found: error
+        retention-days: 1
+    - name: Upload sw-host runtime assets
+      uses: actions/upload-artifact@v4
+      with:
+        name: sw-host-runtime
+        path: packages/actr-web/dist/sw/
+        if-no-files-found: error
+        retention-days: 1
+    - name: Record observed cache outcomes
+      if: always()
+      env:
+        CI15_CACHE_REPORT: '[{"step": "cli-web-assets", "action": "actions/cache@v4", "hit": "${{ steps.cli-web-assets.outputs.cache-hit
+          }}", "outcome": "${{ steps.cli-web-assets.outcome }}"}, {"step": "ci15-cache-8", "action": "Swatinem/rust-cache@v2",
+          "hit": "${{ steps.ci15-cache-8.outputs.cache-hit }}", "outcome": "${{ steps.ci15-cache-8.outcome }}"}]'
+      run: echo "$CI15_CACHE_REPORT"; echo "$CI15_CACHE_REPORT" >> "$GITHUB_STEP_SUMMARY"
+    - name: Record final compiler cache statistics
+      if: always()
+      run: sccache --show-stats || true
+  e2e_rust:
+    name: Rust E2E Compile
+    needs: determine
+    if: needs.determine.outputs.e2e_rust == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v5
+    - name: Prepare Linux build space
+      uses: ./.github/actions/prepare-linux-build
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        targets: wasm32-wasip2,wasm32-unknown-unknown
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: tests/e2e/actr -> ../target/e2e
+        prefix-key: ${{ env.CI15_CACHE }}-rust
+      id: ci15-cache-4
+    - name: Install native dependencies
+      run: 'sudo apt-get update
+
+        sudo apt-get install -y libopus-dev
+
+        '
+    - name: Resolve e2e workspace with the committed lockfile
+      working-directory: tests/e2e/actr
+      run: "cargo metadata \\\n  --format-version 1 \\\n  --locked \\\n  > \"$RUNNER_TEMP/e2e-metadata.json\"\npython3 - \"\
+        $RUNNER_TEMP/e2e-metadata.json\" <<'PY'\nimport json\nimport pathlib\nimport sys\n\nmetadata = json.loads(pathlib.Path(sys.argv[1]).read_text())\n\
+        registry_actr = [\n    package[\"name\"]\n    for package in metadata[\"packages\"]\n    if package[\"name\"].startswith(\"\
+        actr\") and package[\"source\"] is not None\n]\nif registry_actr:\n    raise SystemExit(\n        \"e2e actr dependencies\
+        \ must resolve from local paths: \"\n        + \", \".join(sorted(registry_actr))\n    )\nPY\n"
+    - name: Compile the Rust E2E workspace
+      working-directory: tests/e2e/actr
+      run: cargo check --workspace --locked
+    - name: Record observed cache outcomes
+      if: always()
+      env:
+        CI15_CACHE_REPORT: '[{"step": "ci15-cache-4", "action": "Swatinem/rust-cache@v2", "hit": "${{ steps.ci15-cache-4.outputs.cache-hit
+          }}", "outcome": "${{ steps.ci15-cache-4.outcome }}"}]'
+      run: echo "$CI15_CACHE_REPORT"; echo "$CI15_CACHE_REPORT" >> "$GITHUB_STEP_SUMMARY"
+  e2e_package_runtime:
+    name: E2E Package Runtime
+    needs:
+    - determine
+    - cli_web_assets
+    if: needs.determine.outputs.e2e_package_runtime == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v5
+    - name: Prepare Linux build space
+      uses: ./.github/actions/prepare-linux-build
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        targets: wasm32-unknown-unknown
+    - name: Install Linux e2e dependencies
+      run: 'sudo rm -f /etc/apt/sources.list.d/google-chrome*
+
+        sudo apt-get update
+
+        sudo apt-get install -y jq sqlite3 lsof perl bubblewrap openssl
+
+        '
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - name: Candidate shared prebuilt Wasm tools
+      uses: ./.github/actions/install-wasm-tools
+      if: contains(github.ref_name, 'ci15-combined-candidate-')
+      with:
+        wasm-pack-only: 'true'
+    - name: Install wasm-pack
+      run: "if ! wasm-pack --version 2>/dev/null | grep -Fxq \"wasm-pack 0.15.0\"; then\n  cargo install wasm-pack --version\
+        \ 0.15.0 --locked --force\nfi\nwasm-pack --version 2>/dev/null | grep -Fxq \"wasm-pack 0.15.0\"\n"
+      if: '!contains(github.ref_name, ''ci15-combined-candidate-'')'
+    - uses: Swatinem/rust-cache@v2
+      with:
+        save-if: false
+        prefix-key: ${{ env.CI15_CACHE }}-rust
+      id: ci15-cache-7
+    - name: Download CLI web runtime assets
+      uses: actions/download-artifact@v4
+      with:
+        name: cli-web-runtime
+        path: crates/actr-cli/assets/web-runtime
+    - name: Sync CLI source assets
+      run: 'test -s crates/actr-cli/assets/web-runtime/actr_sw_host_bg.wasm
+
+        test -s crates/actr-cli/assets/web-runtime/actr_sw_host.js
+
+        bash packages/actr-web/scripts/sync-cli-assets.sh --skip-sw-host
+
+        '
+    - name: Verify Publisher signing-key isolation
+      run: python3 tests/e2e/actr/package-runtime-echo/test_runtime_isolation.py
+    - name: Verify HTTPS transport and certificate rejection
+      run: python3 tests/e2e/actr/package-runtime-echo/test_https_documents.py
+    - name: Run signed package runtime echo e2e
+      run: bash tests/e2e/actr/package-runtime-echo/run.sh
+    - name: Run provider and external domain Realms
+      run: bash tests/e2e/actr/package-runtime-echo/realm-matrix.sh
+    - name: Verify retired and revoked Publisher signing keys
+      run: MODE=rotation bash tests/e2e/actr/package-runtime-echo/run.sh
+    - name: Record observed cache outcomes
+      if: always()
+      env:
+        CI15_CACHE_REPORT: '[{"step": "ci15-cache-7", "action": "Swatinem/rust-cache@v2", "hit": "${{ steps.ci15-cache-7.outputs.cache-hit
+          }}", "outcome": "${{ steps.ci15-cache-7.outcome }}"}]'
+      run: echo "$CI15_CACHE_REPORT"; echo "$CI15_CACHE_REPORT" >> "$GITHUB_STEP_SUMMARY"
+  audit:
+    name: Dependency Audit
+    needs: determine
+    if: needs.determine.outputs.rust_core == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v5
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+    - name: Install cargo-audit
+      run: cargo install cargo-audit --version 0.22.2 --locked --force
+    - name: Audit Cargo.lock
+      run: cargo audit
+  rust:
+    name: Rust
+    needs:
+    - determine
+    - cli_web_assets
+    if: needs.determine.outputs.rust_core == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+    env:
+      CARGO_TERM_COLOR: always
+      RUST_BACKTRACE: 1
+      RUSTUP_TOOLCHAIN: 1.99.0
+      ACTR_REQUIRE_WASM_FIXTURE: '1'
+      RUSTC_WRAPPER: sccache
+      SCCACHE_GHA_ENABLED: 'true'
+    steps:
+    - uses: actions/checkout@v5
+    - name: Prepare Linux build space
+      uses: ./.github/actions/prepare-linux-build
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        components: rustfmt,clippy
+        targets: wasm32-wasip2,wasm32-unknown-unknown
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - name: Run sccache-cache
+      uses: mozilla-actions/sccache-action@v0.0.9
+      with:
+        version: v0.18.0
+    - name: OTel payload-logging guard
+      run: bash .github/workflows/scripts/check-payload-logging.sh
+    - name: Test mobile Issuer fixture on a non-Unix target
+      run: python3 scripts/actr/tests/test_mobile_fixture_cfg.py
+    - name: Install native build dependencies
+      run: "if ! command -v pkg-config >/dev/null 2>&1 || ! pkg-config --exists openssl || ! command -v cmake >/dev/null 2>&1;\
+        \ then\n  sudo apt-get update\n  sudo apt-get install -y pkg-config libssl-dev cmake\nfi\n"
+    - name: Verify actr-hyper WIT drift
+      run: 'cmp crates/actr-framework/wit-v2/actr-workload.wit crates/actr-hyper/wit-v2/actr-workload.wit
+
+        '
+    - name: Cache cargo-installed tools
+      id: cargo-tools
+      uses: actions/cache@v4
+      with:
+        path: '~/.cargo/bin/wasm-pack
+
+          ~/.cargo/bin/wasm-component-ld
+
+          ~/.cargo/bin/wasm-tools
+
+          '
+        key: ${{ env.CI15_CACHE }}-cargo-tools-v2-${{ runner.os }}-wp0.15.0-wcld0.5.26-wt1.253.0
+    - name: Candidate shared prebuilt Wasm tools
+      uses: ./.github/actions/install-wasm-tools
+      if: contains(github.ref_name, 'ci15-combined-candidate-')
+    - name: Install wasm-pack
+      run: "if ! wasm-pack --version 2>/dev/null | grep -Fxq \"wasm-pack 0.15.0\"; then\n  cargo install wasm-pack --version\
+        \ 0.15.0 --locked --force\nfi\nwasm-pack --version 2>/dev/null | grep -Fxq \"wasm-pack 0.15.0\"\n"
+      if: '!contains(github.ref_name, ''ci15-combined-candidate-'')'
+    - name: Install wasm Component Model toolchain
+      run: "if ! wasm-component-ld --version 2>/dev/null | grep -Fxq \"wasm-component-ld 0.5.26\"; then\n  cargo install wasm-component-ld\
+        \ --version 0.5.26 --locked --force\nfi\nwasm-component-ld --version 2>/dev/null | grep -Fxq \"wasm-component-ld 0.5.26\"\
+        \nif ! wasm-tools --version 2>/dev/null | grep -Eq '^wasm-tools 1\\.253\\.0( \\(.*\\))?$'; then\n  cargo install wasm-tools\
+        \ --version 1.253.0 --locked --force\nfi\nwasm-tools --version 2>/dev/null | grep -Eq '^wasm-tools 1\\.253\\.0( \\\
+        (.*\\))?$'\n"
+      if: '!contains(github.ref_name, ''ci15-combined-candidate-'')'
+    - name: Download CLI web runtime assets
+      uses: actions/download-artifact@v4
+      with:
+        name: cli-web-runtime
+        path: crates/actr-cli/assets/web-runtime
+    - name: Sync CLI source assets
+      run: 'test -s crates/actr-cli/assets/web-runtime/actr_sw_host_bg.wasm
+
+        test -s crates/actr-cli/assets/web-runtime/actr_sw_host.js
+
+        bash packages/actr-web/scripts/sync-cli-assets.sh --skip-sw-host
+
+        '
+    - name: Check formatting
+      run: cargo fmt --all -- --check
+    - name: Test Rust protoc plugin well-known types
+      run: cargo test -p actr-framework-protoc-codegen --test well_known_type_smoke
+    - name: Verify RFC-0400 timer inventory
+      run: cargo test -p actr-hyper --lib timer::tests::inv24_production_timer_calls_and_inventory_do_not_drift
+      if: '!contains(github.ref_name, ''ci15-combined-candidate-'')'
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Verify upstream dependency overrides
+      run: 'python3 scripts/actr/check-upstream-patches.py
+
+        python3 scripts/actr/tests/test_apply_upstream_patches.py
+
+        '
+    - name: Check committed Kotlin binding checksums against the native library
+      run: "cargo build -p libactr\npython3 scripts/actr/check-binding-checksums.py \\\n  --library target/debug/libactr.so\
+        \ \\\n  --binding packages/actr-kotlin/actr-kotlin/src/main/kotlin/io/actrium/actr/actr.kt\n"
+    - name: Clippy (deny warnings)
+      env:
+        CARGO_BUILD_WARNINGS: deny
+      run: cargo +1.99.0 clippy --workspace --all-targets --all-features
+    - name: Record observed cache outcomes
+      if: always()
+      env:
+        CI15_CACHE_REPORT: '[{"step": "cargo-tools", "action": "actions/cache@v4", "hit": "${{ steps.cargo-tools.outputs.cache-hit
+          }}", "outcome": "${{ steps.cargo-tools.outcome }}"}]'
+      run: echo "$CI15_CACHE_REPORT"; echo "$CI15_CACHE_REPORT" >> "$GITHUB_STEP_SUMMARY"
+    - name: Record final compiler cache statistics
+      if: always()
+      run: sccache --show-stats || true
+  test:
+    name: Test (Rust, ${{ matrix.shard }})
+    needs:
+    - determine
+    - cli_web_assets
+    if: needs.determine.outputs.rust_core == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(contains(github.ref_name, 'ci15-combined-candidate-') && '["build-heavy","network","rest"]' ||
+          '["realtime","rest"]') }}
+    env:
+      CARGO_TERM_COLOR: always
+      RUST_BACKTRACE: 1
+      ACTR_REQUIRE_WASM_FIXTURE: '1'
+      ACTR_REQUIRE_NON_LOOPBACK_IPV4: '1'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+      RUSTC_WRAPPER: sccache
+      SCCACHE_GHA_ENABLED: 'true'
+      REALTIME_BINARIES: binary(mobile_rtc_pair_contract) | binary(mobile_rtc_multi_peer) | (package(actr-hyper) and test(/^connection_governance_matrix::/))
+        | (package(actr-hyper) and test(/^connection_governance_production::/)) | (package(actr-hyper) and test(/^connection_governance_inflight::/))
+        | binary(recovery_attempt_timer) | binary(webrtc_large_mobile_recovery) | binary(mobile_full_disconnect_recovery)
+        | binary(mobile_network_event_scenarios) | binary(ice_restart) | binary(ice_restart_with_signaling_disruption) | binary(ice_restart_unilateral_outage)
+        | binary(turn_credential_rotation) | binary(webrtc_large_data_transfer) | binary(webrtc_initial_connection_timeout)
+        | binary(media_loopback) | binary(dynclib_actor_e2e) | binary(rust_echo) | binary(outproc_disconnect_reconnect) |
+        binary(outproc_connection_rebuild) | binary(recovery_vnet_supervisor) | binary(mock_loran_integration)
+      BUILD_HEAVY_BINARIES: binary(rust_echo) | binary(dynclib_actor_e2e)
+    steps:
+    - uses: actions/checkout@v5
+    - name: Prepare Linux build space
+      uses: ./.github/actions/prepare-linux-build
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        components: rust-src
+        targets: wasm32-wasip2,wasm32-unknown-unknown
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - name: Verify actr-hyper WIT drift
+      run: 'cmp crates/actr-framework/wit-v2/actr-workload.wit crates/actr-hyper/wit-v2/actr-workload.wit
+
+        '
+    - uses: Swatinem/rust-cache@v2
+      with:
+        cache-targets: false
+        save-if: ${{ matrix.shard == 'rest' }}
+        prefix-key: ${{ env.CI15_CACHE }}-rust
+      id: ci15-cache-5
+    - name: Run sccache-cache
+      uses: mozilla-actions/sccache-action@v0.0.9
+      with:
+        version: v0.18.0
+    - name: Candidate shared prebuilt Wasm tools
+      uses: ./.github/actions/install-wasm-tools
+      if: contains(github.ref_name, 'ci15-combined-candidate-')
+    - name: Install prebuilt WebAssembly tools
+      env:
+        WASM_PACK_SHA256: c09f971ecaed9a2efc80fdcea7a00ef6b53c7fadc8c57d1f61b53a6aa66b668a
+        WASM_COMPONENT_LD_SHA256: e5cee677052c0eb6b5d0605f85e3bbc46d076050cd3403406f49b3503f22622c
+        WASM_TOOLS_SHA256: 4e2898f7ca3bd0536218ed9b7b36ff7b86954c57ae0e6272fde69728cbe01088
+      run: "install_binary() {\n  local name=\"$1\"\n  local expected=\"$2\"\n  local url=\"$3\"\n  local sha256=\"$4\"\n\
+        \  if \"$HOME/.cargo/bin/$name\" --version 2>/dev/null | grep -Eq \"$expected\"; then\n    echo \"Reusing image $name\"\
+        \n    return\n  fi\n  local archive=\"$RUNNER_TEMP/$name.tar.gz\"\n  local extract_dir\n  extract_dir=$(mktemp -d\
+        \ \"$RUNNER_TEMP/$name.XXXXXX\")\n\n  curl --fail --location --retry 3 --retry-all-errors --output \"$archive\" \"\
+        $url\"\n  echo \"$sha256  $archive\" | sha256sum --check --status\n  tar --extract --gzip --file \"$archive\" --strip-components=1\
+        \ --directory \"$extract_dir\"\n  install --mode=0755 \"$extract_dir/$name\" \"$HOME/.cargo/bin/$name\"\n  rm -rf\
+        \ \"$archive\" \"$extract_dir\"\n  \"$HOME/.cargo/bin/$name\" --version | grep -Eq \"$expected\"\n}\n\ninstall_binary\
+        \ wasm-pack '^wasm-pack 0\\.15\\.0$' \\\n  https://github.com/wasm-bindgen/wasm-pack/releases/download/v0.15.0/wasm-pack-v0.15.0-x86_64-unknown-linux-musl.tar.gz\
+        \ \\\n  \"$WASM_PACK_SHA256\"\ninstall_binary wasm-component-ld '^wasm-component-ld 0\\.5\\.26$' \\\n  https://github.com/bytecodealliance/wasm-component-ld/releases/download/v0.5.26/wasm-component-ld-v0.5.26-x86_64-linux.tar.gz\
+        \ \\\n  \"$WASM_COMPONENT_LD_SHA256\"\ninstall_binary wasm-tools '^wasm-tools 1\\.253\\.0( \\(.*\\))?$' \\\n  https://github.com/bytecodealliance/wasm-tools/releases/download/v1.253.0/wasm-tools-1.253.0-x86_64-linux.tar.gz\
+        \ \\\n  \"$WASM_TOOLS_SHA256\"\n\nwasm-pack --version\nwasm-component-ld --version\nwasm-tools --version\n"
+      if: '!contains(github.ref_name, ''ci15-combined-candidate-'')'
+    - name: Download CLI web runtime assets
+      uses: actions/download-artifact@v4
+      with:
+        name: cli-web-runtime
+        path: crates/actr-cli/assets/web-runtime
+    - name: Sync CLI source assets
+      run: 'test -s crates/actr-cli/assets/web-runtime/actr_sw_host_bg.wasm
+
+        test -s crates/actr-cli/assets/web-runtime/actr_sw_host.js
+
+        bash packages/actr-web/scripts/sync-cli-assets.sh --skip-sw-host
+
+        '
+    - name: Install cargo-nextest
+      uses: taiki-e/install-action@cargo-nextest
+    - name: Build rest test inventory and verify RFC-0507 acceptance
+      if: matrix.shard == 'rest'
+      run: "cargo metadata --format-version 1 --all-features --locked \\\n  > \"$RUNNER_TEMP/nextest-rest-cargo.json\"\ncargo\
+        \ nextest list --workspace --all-features \\\n  --list-type binaries-only --message-format json \\\n  > \"$RUNNER_TEMP/nextest-rest-binaries.json\"\
+        \ncargo nextest list \\\n  --cargo-metadata \"$RUNNER_TEMP/nextest-rest-cargo.json\" \\\n  --binaries-metadata \"\
+        $RUNNER_TEMP/nextest-rest-binaries.json\" \\\n  -E \"not($REALTIME_BINARIES)\" --message-format json \\\n  > \"$RUNNER_TEMP/nextest-rest-tests.json\"\
+        \npython3 - \"$RUNNER_TEMP/nextest-rest-tests.json\" <<'PY'\nimport json\nimport sys\n\nacceptance = \"outbound::peer_gate::websocket_tests::live_websocket_partial_write_is_uncertain_without_replay\"\
+        \nwith open(sys.argv[1]) as source:\n    inventory = json.load(source)\nselected = []\nfor suite in inventory[\"rust-suites\"\
+        ].values():\n    if suite[\"package-name\"] != \"actr-hyper\" or suite[\"kind\"] != \"lib\":\n        continue\n \
+        \   case = suite.get(\"testcases\", {}).get(acceptance)\n    if case and not case[\"ignored\"] and case[\"filter-match\"\
+        ][\"status\"] == \"matches\":\n        selected.append(suite[\"binary-id\"])\nif len(selected) != 1:\n    raise SystemExit(\"\
+        RFC-0507 acceptance must be selected exactly once in the rest shard\")\nprint(f\"RFC-0507 acceptance selected in {selected[0]};\
+        \ the rest suite runs it without retries\")\nPY\n"
+    - name: Candidate assert timer selected exactly once in rest
+      if: matrix.shard == 'rest' && (contains(github.ref_name, 'ci15-combined-candidate-'))
+      run: python3 .github/scripts/assert-ci15-timer.py "$RUNNER_TEMP/nextest-rest-tests.json"
+    - name: Candidate realtime inventory partition assertion
+      if: matrix.shard == 'build-heavy' || matrix.shard == 'network'
+      run: "cargo metadata --format-version 1 --all-features --locked > \"$RUNNER_TEMP/realtime-cargo.json\"\ncargo nextest\
+        \ list --workspace --all-features --list-type binaries-only --message-format json > \"$RUNNER_TEMP/realtime-binaries.json\"\
+        \nfor partition in whole build-heavy network; do\n  filter=\"$REALTIME_BINARIES\"\n  if [[ \"$partition\" == build-heavy\
+        \ ]]; then filter=\"($REALTIME_BINARIES) and ($BUILD_HEAVY_BINARIES)\"; fi\n  if [[ \"$partition\" == network ]];\
+        \ then filter=\"($REALTIME_BINARIES) and not($BUILD_HEAVY_BINARIES)\"; fi\n  cargo nextest list --cargo-metadata \"\
+        $RUNNER_TEMP/realtime-cargo.json\" --binaries-metadata \"$RUNNER_TEMP/realtime-binaries.json\" -E \"$filter\" --message-format\
+        \ json > \"$RUNNER_TEMP/realtime-$partition.json\"\ndone\npython3 .github/scripts/ci15-assert-realtime.py \"$RUNNER_TEMP/realtime-whole.json\"\
+        \ \"$RUNNER_TEMP/realtime-build-heavy.json\" \"$RUNNER_TEMP/realtime-network.json\""
+    - name: Run tests (nextest, ${{ matrix.shard }} shard)
+      run: "if [ \"${{ matrix.shard }}\" = realtime ]; then\n  cargo nextest run --workspace --all-features --no-fail-fast\
+        \ -E \"$REALTIME_BINARIES\"\nelif [[ \"${{ matrix.shard }}\" == build-heavy || \"${{ matrix.shard }}\" == network\
+        \ ]]; then\n  filter=\"($REALTIME_BINARIES) and ($BUILD_HEAVY_BINARIES)\"\n  if [[ \"${{ matrix.shard }}\" == network\
+        \ ]]; then filter=\"($REALTIME_BINARIES) and not($BUILD_HEAVY_BINARIES)\"; fi\n  cargo nextest run --cargo-metadata\
+        \ \"$RUNNER_TEMP/realtime-cargo.json\" --binaries-metadata \"$RUNNER_TEMP/realtime-binaries.json\" --no-fail-fast\
+        \ -E \"$filter\"\nelse\n  cargo nextest run \\\n    --cargo-metadata \"$RUNNER_TEMP/nextest-rest-cargo.json\" \\\n\
+        \    --binaries-metadata \"$RUNNER_TEMP/nextest-rest-binaries.json\" \\\n    --no-fail-fast -E \"not($REALTIME_BINARIES)\"\
+        \nfi\n"
+    - name: Run doctests
+      if: matrix.shard == 'rest'
+      run: cargo test --doc --workspace --all-features
+    - name: sccache stats
+      if: always()
+      run: sccache --show-stats || true
+    - name: Record observed cache outcomes
+      if: always()
+      env:
+        CI15_CACHE_REPORT: '[{"step": "ci15-cache-5", "action": "Swatinem/rust-cache@v2", "hit": "${{ steps.ci15-cache-5.outputs.cache-hit
+          }}", "outcome": "${{ steps.ci15-cache-5.outcome }}"}]'
+      run: echo "$CI15_CACHE_REPORT"; echo "$CI15_CACHE_REPORT" >> "$GITHUB_STEP_SUMMARY"
+    - name: Record final compiler cache statistics
+      if: always()
+      run: sccache --show-stats || true
+  rust_msrv:
+    name: Rust MSRV (1.95)
+    needs:
+    - determine
+    - cli_web_assets
+    if: needs.determine.outputs.rust_core == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+    env:
+      CARGO_TERM_COLOR: always
+      RUST_BACKTRACE: 1
+      ACTR_REQUIRE_WASM_FIXTURE: '1'
+      RUSTC_WRAPPER: sccache
+      SCCACHE_GHA_ENABLED: 'true'
+    steps:
+    - uses: actions/checkout@v5
+    - name: Prepare Linux build space
+      uses: ./.github/actions/prepare-linux-build
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - name: Run sccache-cache
+      uses: mozilla-actions/sccache-action@v0.0.9
+      with:
+        version: v0.18.0
+    - name: Setup Rust (MSRV)
+      uses: dtolnay/rust-toolchain@1.95.0
+      with:
+        targets: wasm32-wasip2,wasm32-unknown-unknown
+    - name: Clear repository Rust toolchain override
+      run: rustup override unset || true
+    - name: Install native build dependencies
+      run: "if ! command -v pkg-config >/dev/null 2>&1 || ! pkg-config --exists openssl || ! command -v cmake >/dev/null 2>&1;\
+        \ then\n  sudo apt-get update\n  sudo apt-get install -y pkg-config libssl-dev cmake\nfi\n"
+    - name: Cache cargo-installed tools
+      id: cargo-tools
+      uses: actions/cache@v4
+      with:
+        path: '~/.cargo/bin/wasm-pack
+
+          ~/.cargo/bin/wasm-component-ld
+
+          ~/.cargo/bin/wasm-tools
+
+          '
+        key: ${{ env.CI15_CACHE }}-cargo-tools-v2-${{ runner.os }}-wp0.15.0-wcld0.5.26-wt1.253.0
+    - name: Candidate shared prebuilt Wasm tools
+      uses: ./.github/actions/install-wasm-tools
+      if: contains(github.ref_name, 'ci15-combined-candidate-')
+    - name: Install wasm-pack
+      run: "if ! wasm-pack --version 2>/dev/null | grep -Fxq \"wasm-pack 0.15.0\"; then\n  cargo install wasm-pack --version\
+        \ 0.15.0 --locked --force\nfi\nwasm-pack --version 2>/dev/null | grep -Fxq \"wasm-pack 0.15.0\"\n"
+      if: '!contains(github.ref_name, ''ci15-combined-candidate-'')'
+    - name: Install wasm Component Model toolchain
+      run: "if ! wasm-component-ld --version 2>/dev/null | grep -Fxq \"wasm-component-ld 0.5.26\"; then\n  cargo install wasm-component-ld\
+        \ --version 0.5.26 --locked --force\nfi\nwasm-component-ld --version 2>/dev/null | grep -Fxq \"wasm-component-ld 0.5.26\"\
+        \nif ! wasm-tools --version 2>/dev/null | grep -Eq '^wasm-tools 1\\.253\\.0( \\(.*\\))?$'; then\n  cargo install wasm-tools\
+        \ --version 1.253.0 --locked --force\nfi\nwasm-tools --version 2>/dev/null | grep -Eq '^wasm-tools 1\\.253\\.0( \\\
+        (.*\\))?$'\n"
+      if: '!contains(github.ref_name, ''ci15-combined-candidate-'')'
+    - name: Download CLI web runtime assets
+      uses: actions/download-artifact@v4
+      with:
+        name: cli-web-runtime
+        path: crates/actr-cli/assets/web-runtime
+    - name: Sync CLI source assets
+      run: 'test -s crates/actr-cli/assets/web-runtime/actr_sw_host_bg.wasm
+
+        test -s crates/actr-cli/assets/web-runtime/actr_sw_host.js
+
+        bash packages/actr-web/scripts/sync-cli-assets.sh --skip-sw-host
+
+        '
+    - name: Build at MSRV (locked)
+      run: cargo build --workspace --all-targets --all-features --locked
+    - name: Record observed cache outcomes
+      if: always()
+      env:
+        CI15_CACHE_REPORT: '[{"step": "cargo-tools", "action": "actions/cache@v4", "hit": "${{ steps.cargo-tools.outputs.cache-hit
+          }}", "outcome": "${{ steps.cargo-tools.outcome }}"}]'
+      run: echo "$CI15_CACHE_REPORT"; echo "$CI15_CACHE_REPORT" >> "$GITHUB_STEP_SUMMARY"
+    - name: Record final compiler cache statistics
+      if: always()
+      run: sccache --show-stats || true
+  typescript:
+    name: TypeScript
+    needs: determine
+    if: needs.determine.outputs.ts_binding == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v5
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: packages/actr-typescript -> ../../target/bindings-typescript
+        prefix-key: ${{ env.CI15_CACHE }}-rust
+      id: ci15-cache-3
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+    - name: Namespaced npm package cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.npm
+        key: ${{ env.CI15_CACHE }}-npm-24-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('packages/actr-typescript/package.json',
+          'tools/actr/protoc-gen/typescript/package-lock.json') }}
+      id: ci15-cache-5
+    - name: Install dependencies
+      working-directory: packages/actr-typescript
+      run: npm install
+    - name: Check formatting
+      working-directory: packages/actr-typescript
+      run: npm run format
+    - name: Run lint
+      working-directory: packages/actr-typescript
+      run: npm run lint
+    - name: Build
+      working-directory: packages/actr-typescript
+      run: npm run build
+    - name: Run unit tests
+      working-directory: packages/actr-typescript
+      run: npm test
+    - name: Test TypeScript protoc plugin
+      working-directory: tools/actr/protoc-gen/typescript
+      run: 'npm ci
+
+        npm test
+
+        '
+    - name: Cargo check
+      working-directory: packages/actr-typescript
+      run: cargo check --locked --manifest-path Cargo.toml
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Verify upstream dependency overrides
+      run: python3 scripts/actr/check-upstream-patches.py --manifest packages/actr-typescript/Cargo.toml --client-only
+    - name: Record observed cache outcomes
+      if: always()
+      env:
+        CI15_CACHE_REPORT: '[{"step": "ci15-cache-3", "action": "Swatinem/rust-cache@v2", "hit": "${{ steps.ci15-cache-3.outputs.cache-hit
+          }}", "outcome": "${{ steps.ci15-cache-3.outcome }}"}, {"step": "ci15-cache-5", "action": "actions/cache@v4", "hit":
+          "${{ steps.ci15-cache-5.outputs.cache-hit }}", "outcome": "${{ steps.ci15-cache-5.outcome }}"}]'
+      run: echo "$CI15_CACHE_REPORT"; echo "$CI15_CACHE_REPORT" >> "$GITHUB_STEP_SUMMARY"
+  typescript_workload:
+    name: TypeScript Workload
+    needs: determine
+    if: needs.determine.outputs.ts_workload == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v5
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+    - name: Namespaced npm package cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.npm
+        key: ${{ env.CI15_CACHE }}-npm-24-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('packages/actr-typescript/actr-workload/package-lock.json',
+          'examples/actr/typescript/echo-workload/package-lock.json') }}
+      id: ci15-cache-2
+    - name: Verify TypeScript workload WIT drift
+      run: 'cmp crates/actr-framework/wit-v2/actr-workload.wit packages/actr-typescript/actr-workload/src/wit-v2/actr-workload.wit
+
+        '
+    - name: Build TypeScript workload package
+      working-directory: packages/actr-typescript/actr-workload
+      run: 'npm ci
+
+        npm run build
+
+        npm test
+
+        node dist/cli.js bindings /tmp/actr-workload-ts-bindings --wit ../../../crates/actr-framework/wit-v2/actr-workload.wit
+
+        npm pack --dry-run
+
+        '
+    - name: Build TypeScript EchoService sources
+      working-directory: examples/actr/typescript/echo-workload
+      run: 'npm ci
+
+        npm run build
+
+        '
+    - name: Componentize TypeScript EchoService workload
+      run: bash .github/scripts/verify-typescript-componentize-blocker.sh
+    - name: Record observed cache outcomes
+      if: always()
+      env:
+        CI15_CACHE_REPORT: '[{"step": "ci15-cache-2", "action": "actions/cache@v4", "hit": "${{ steps.ci15-cache-2.outputs.cache-hit
+          }}", "outcome": "${{ steps.ci15-cache-2.outcome }}"}]'
+      run: echo "$CI15_CACHE_REPORT"; echo "$CI15_CACHE_REPORT" >> "$GITHUB_STEP_SUMMARY"
+  python_codegen:
+    name: Python Codegen
+    needs: determine
+    if: needs.determine.outputs.python_codegen == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: tools/actr/protoc-gen/python
+    steps:
+    - uses: actions/checkout@v5
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Locate pip cache
+      id: pip-dir-2
+      run: echo "path=$(python -m pip cache dir)" >> "$GITHUB_OUTPUT"
+    - name: Namespaced pip package cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.pip-dir-2.outputs.path }}
+        key: ${{ env.CI15_CACHE }}-pip-3.11-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('tools/actr/protoc-gen/python/pyproject.toml')
+          }}
+      id: ci15-cache-4
+    - name: Install package
+      run: pip install -e .
+    - name: Run unit tests
+      run: python -m unittest discover -s tests -v
+    - name: Smoke generate typed workload
+      run: "tmp=\"$(mktemp -d)\"\nmkdir -p \"$tmp/protos/local\" \"$tmp/generated\"\ncat > \"$tmp/protos/local/echo.proto\"\
+        \ <<'PROTO'\nsyntax = \"proto3\";\npackage echo;\n\nmessage EchoRequest {\n  string message = 1;\n}\n\nmessage EchoResponse\
+        \ {\n  string reply = 1;\n}\n\nservice EchoService {\n  rpc Echo(EchoRequest) returns (EchoResponse);\n}\nPROTO\n\n\
+        python3 - \"$tmp\" <<'PY'\nimport hashlib, json, os, pathlib, sys\ntmp = sys.argv[1]\nspec = {\n    \"schema_version\"\
+        : \"v1\",\n    \"routes\": [\n        {\n            \"route_key\": \"echo.EchoService.Echo\",\n            \"proto_file\"\
+        : \"local/echo.proto\",\n            \"proto_service\": \"echo.EchoService\",\n            \"method\": \"Echo\",\n\
+        \            \"input_type\": \"echo.EchoRequest\",\n            \"output_type\": \"echo.EchoResponse\",\n        \
+        \    \"payload_type\": \"rpcReliable\",\n            \"reply_mode\": \"return\",\n        }\n    ],\n}\ncanonical\
+        \ = json.dumps(spec, sort_keys=True, separators=(\",\", \":\"))\nspec[\"spec_hash\"] = hashlib.sha256(canonical.encode()).hexdigest()\n\
+        pathlib.Path(os.path.join(tmp, \"dispatch_spec.json\")).write_text(\n    json.dumps(spec)\n)\nPY\n\nspec_hash=$(python3\
+        \ -c 'import json,sys;print(json.load(open(sys.argv[1]))[\"spec_hash\"])' \"$tmp/dispatch_spec.json\")\nprotoc \\\n\
+        \  --proto_path=\"$tmp/protos\" \\\n  --python_out=\"$tmp/generated\" \\\n  --plugin=\"protoc-gen-actrframework-python=$(command\
+        \ -v protoc-gen-actrframework-python)\" \\\n  --actrframework-python_opt=\"dispatch_spec=$tmp/dispatch_spec.json,dispatch_spec_hash=$spec_hash\"\
+        \ \\\n  --actrframework-python_out=\"$tmp/generated\" \\\n  \"$tmp/protos/local/echo.proto\"\n\npython -m compileall\
+        \ \"$tmp/generated\"\nPYTHONPATH=\"$tmp\" python - <<'PY'\nimport generated.local.echo_pb2\nimport generated.actr_dispatch\n\
+        \nassert hasattr(generated.actr_dispatch, \"actr_dispatch\")\nPY\n\nif grep -R -E \"from actr import|import actr\"\
+        \ \"$tmp/generated\"; then\n  echo \"legacy actr runtime import leaked into generated Python\" >&2\n  exit 1\nfi\n"
+    - name: Build package
+      run: 'python -m pip install -U build
+
+        python -m build
+
+        '
+    - name: Record observed cache outcomes
+      if: always()
+      env:
+        CI15_CACHE_REPORT: '[{"step": "ci15-cache-4", "action": "actions/cache@v4", "hit": "${{ steps.ci15-cache-4.outputs.cache-hit
+          }}", "outcome": "${{ steps.ci15-cache-4.outcome }}"}]'
+      run: echo "$CI15_CACHE_REPORT"; echo "$CI15_CACHE_REPORT" >> "$GITHUB_STEP_SUMMARY"
+  python_workload:
+    name: Python Workload
+    needs: determine
+    if: needs.determine.outputs.python_workload == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v5
+    - name: Prepare Linux build space
+      uses: ./.github/actions/prepare-linux-build
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        targets: wasm32-wasip2,wasm32-unknown-unknown
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - uses: Swatinem/rust-cache@v2
+      with:
+        prefix-key: ${{ env.CI15_CACHE }}-rust
+      id: ci15-cache-4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+    - name: Locate pip cache
+      id: pip-dir-5
+      run: echo "path=$(python -m pip cache dir)" >> "$GITHUB_OUTPUT"
+    - name: Namespaced pip package cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.pip-dir-5.outputs.path }}
+        key: ${{ env.CI15_CACHE }}-pip-3.13-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('packages/actr-python/actr-workload/pyproject.toml')
+          }}
+      id: ci15-cache-7
+    - name: Verify actr-hyper WIT drift
+      run: 'cmp crates/actr-framework/wit-v2/actr-workload.wit crates/actr-hyper/wit-v2/actr-workload.wit
+
+        '
+    - name: Cache cargo-installed tools
+      id: cargo-tools
+      uses: actions/cache@v4
+      with:
+        path: '~/.cargo/bin/wasm-tools
+
+          ~/.cargo/bin/wasm-pack
+
+          '
+        key: ${{ env.CI15_CACHE }}-cargo-tools-v2-${{ runner.os }}-wt1.253.0-wp0.15.0
+    - name: Install wasm-tools
+      run: "if ! wasm-tools --version 2>/dev/null | grep -Eq '^wasm-tools 1\\.253\\.0( \\(.*\\))?$'; then\n  cargo install\
+        \ wasm-tools --version 1.253.0 --locked --force\nfi\nwasm-tools --version 2>/dev/null | grep -Eq '^wasm-tools 1\\\
+        .253\\.0( \\(.*\\))?$'\n"
+    - name: Install wasm-pack
+      run: "if ! wasm-pack --version 2>/dev/null | grep -Fxq \"wasm-pack 0.15.0\"; then\n  cargo install wasm-pack --version\
+        \ 0.15.0 --locked --force\nfi\nwasm-pack --version 2>/dev/null | grep -Fxq \"wasm-pack 0.15.0\"\n"
+    - name: Verify TypeScript workload WIT drift
+      run: 'cmp crates/actr-framework/wit-v2/actr-workload.wit packages/actr-typescript/actr-workload/src/wit-v2/actr-workload.wit
+
+        '
+    - name: Build actr-workload package
+      run: 'python -m pip install -U build
+
+        python -m build packages/actr-python/actr-workload
+
+        '
+    - name: Install actr-workload build extra
+      run: python -m pip install -e 'packages/actr-python/actr-workload[build]'
+    - name: Install Python protocol generator
+      run: python -m pip install -e tools/actr/protoc-gen/python
+    - name: Verify componentize-py pin
+      run: componentize-py --version | grep 'componentize-py 0.25.0'
+    - name: Test Python workload authoring bridge
+      run: python -m unittest discover -s packages/actr-python/actr-workload/tests -v
+    - name: Generate workload bindings
+      run: 'rm -rf /tmp/actr-workload-bindings
+
+        actr-workload bindings /tmp/actr-workload-bindings
+
+        test -f /tmp/actr-workload-bindings/actr_workload_bindings/exports/workload.py
+
+        test -f /tmp/actr-workload-bindings/actr_workload_bindings/imports/host.py
+
+        '
+    - name: Compile Python sources
+      run: python -m compileall packages/actr-python/actr-workload/src examples/actr/python/echo-workload/workload.py examples/actr/python/concurrency-probe-workload/workload.py
+    - name: Build Python echo workload
+      working-directory: examples/actr/python/echo-workload
+      run: ./build.sh package
+    - name: Build generated Python scaffold
+      working-directory: examples/actr/python/echo-workload
+      run: 'mv workload.py workload.py.handwritten
+
+        ./build.sh
+
+        '
+    - name: Record observed cache outcomes
+      if: always()
+      env:
+        CI15_CACHE_REPORT: '[{"step": "ci15-cache-4", "action": "Swatinem/rust-cache@v2", "hit": "${{ steps.ci15-cache-4.outputs.cache-hit
+          }}", "outcome": "${{ steps.ci15-cache-4.outcome }}"}, {"step": "ci15-cache-7", "action": "actions/cache@v4", "hit":
+          "${{ steps.ci15-cache-7.outputs.cache-hit }}", "outcome": "${{ steps.ci15-cache-7.outcome }}"}, {"step": "cargo-tools",
+          "action": "actions/cache@v4", "hit": "${{ steps.cargo-tools.outputs.cache-hit }}", "outcome": "${{ steps.cargo-tools.outcome
+          }}"}]'
+      run: echo "$CI15_CACHE_REPORT"; echo "$CI15_CACHE_REPORT" >> "$GITHUB_STEP_SUMMARY"
+  swift:
+    name: Swift
+    needs: determine
+    if: needs.determine.outputs.swift_binding == 'true'
+    runs-on: macos-latest
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v5
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        targets: aarch64-apple-darwin
+    - uses: Swatinem/rust-cache@v2
+      with:
+        prefix-key: ${{ env.CI15_CACHE }}-rust
+      id: ci15-cache-2
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - name: Cache uniffi-bindgen binary
+      id: cache-uniffi
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/bin/uniffi-bindgen*
+        key: ${{ env.CI15_CACHE }}-uniffi-bindgen-0.31.1-${{ runner.os }}-${{ runner.arch }}
+    - name: Install UniFFI bindgen
+      if: steps.cache-uniffi.outputs.cache-hit != 'true'
+      run: "# Swatinem/rust-cache may already restore ~/.cargo/bin/uniffi-bindgen\n# from a prior run with a different key;\
+        \ skip the install when the\n# binary is present so the unguarded `cargo install` doesn't abort\n# with \"binary already\
+        \ exists in destination\".\nif ! command -v uniffi-bindgen >/dev/null 2>&1; then\n  cargo install --locked uniffi\
+        \ --version 0.31.1 --features cli --bin uniffi-bindgen\nfi\n"
+    - name: Install Swift tools and libraries
+      run: brew install swiftlint opus
+    - name: Run SwiftLint
+      run: swiftlint lint --strict
+    - name: Check actr-cabi header sync
+      run: git diff --no-index --exit-code -- crates/actr-cabi/actr-cabi.h packages/actr-cabi/swift/Sources/ActrCabi/include/actr-cabi.h
+    - name: Type-check actr-cabi Swift wrapper
+      run: swiftc -typecheck -swift-version 6 -I packages/actr-cabi/swift/Sources/ActrCabi/include packages/actr-cabi/swift/Sources/ActrCabi/ActrCabi.swift
+    - name: Build local Swift XCFramework
+      working-directory: packages/actr-swift
+      env:
+        ACTR_BUILD_PROFILE: debug
+        ACTR_XCFRAMEWORK_TARGETS: macos
+        CMAKE_POLICY_VERSION_MINIMUM: '3.5'
+      run: './build-xcframework.sh
+
+        '
+    - name: Build Swift bindings package
+      working-directory: packages/actr-swift
+      run: 'swift build
+
+        '
+    - name: Pre-build mock-loran
+      run: cargo build -p actr-mock-loran --bin mock-loran
+    - name: Test Swift bindings package
+      working-directory: packages/actr-swift
+      env:
+        ACTR_SWIFT_E2E: '1'
+      run: "../../target/debug/mock-loran --port 8081 > \"$RUNNER_TEMP/mock-loran.log\" 2>&1 &\nmock_pid=\"$!\"\ntrap 'kill\
+        \ \"$mock_pid\" || true' EXIT\nfor _ in {1..60}; do\n  if grep -q \"mock-loran listening\" \"$RUNNER_TEMP/mock-loran.log\"\
+        ; then\n    cat \"$RUNNER_TEMP/mock-loran.log\"\n    break\n  fi\n  if ! kill -0 \"$mock_pid\" 2>/dev/null; then\n\
+        \    cat \"$RUNNER_TEMP/mock-loran.log\"\n    exit 1\n  fi\n  sleep 1\ndone\nif ! grep -q \"mock-loran listening\"\
+        \ \"$RUNNER_TEMP/mock-loran.log\"; then\n  cat \"$RUNNER_TEMP/mock-loran.log\"\n  exit 1\nfi\nACTR_BINDINGS_PATH=dist/ActrBindings\
+        \ \\\nACTR_BINARY_PATH=dist/ActrFFI.xcframework \\\nswift test\n"
+    - name: Build Swift codegen package
+      working-directory: tools/actr/protoc-gen/swift
+      run: swift build
+    - name: Record observed cache outcomes
+      if: always()
+      env:
+        CI15_CACHE_REPORT: '[{"step": "ci15-cache-2", "action": "Swatinem/rust-cache@v2", "hit": "${{ steps.ci15-cache-2.outputs.cache-hit
+          }}", "outcome": "${{ steps.ci15-cache-2.outcome }}"}, {"step": "cache-uniffi", "action": "actions/cache@v4", "hit":
+          "${{ steps.cache-uniffi.outputs.cache-hit }}", "outcome": "${{ steps.cache-uniffi.outcome }}"}]'
+      run: echo "$CI15_CACHE_REPORT"; echo "$CI15_CACHE_REPORT" >> "$GITHUB_STEP_SUMMARY"
+  kotlin:
+    name: Kotlin
+    needs:
+    - determine
+    - cli_web_assets
+    if: needs.determine.outputs.kotlin_binding == 'true'
+    uses: ./.github/workflows/ci15-combined-kotlin.yml
+    with:
+      cli_web_runtime_artifact: cli-web-runtime
+      experiment_namespace: ${{ github.ref_name }}
+  web:
+    name: Web
+    needs:
+    - determine
+    - cli_web_assets
+    if: needs.determine.outputs.web_binding == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      CARGO_TERM_COLOR: always
+      RUST_BACKTRACE: 1
+    steps:
+    - uses: actions/checkout@v5
+    - name: Prepare Linux build space
+      uses: ./.github/actions/prepare-linux-build
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        components: rustfmt
+        targets: wasm32-wasip2,wasm32-unknown-unknown
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: packages/actr-web -> ../../target/bindings-web
+        prefix-key: ${{ env.CI15_CACHE }}-rust
+      id: ci15-cache-4
+    - name: Check formatting
+      working-directory: packages/actr-web
+      run: cargo fmt --all -- --check
+    - name: Check web workspace
+      working-directory: packages/actr-web
+      run: cargo check --workspace --target wasm32-unknown-unknown --locked
+    - name: WIT codegen drift gate (Option U)
+      run: cargo run -p actr-wit-compile-web -- --check
+    - name: Download sw-host runtime assets
+      uses: actions/download-artifact@v4
+      with:
+        name: sw-host-runtime
+        path: packages/actr-web/dist/sw
+    - name: Verify sw-host runtime assets
+      run: 'test -s packages/actr-web/dist/sw/actr_sw_host_bg.wasm
+
+        test -s packages/actr-web/dist/sw/actr_sw_host.js
+
+        test -s packages/actr-web/dist/sw/actr_sw_host.d.ts
+
+        test -s packages/actr-web/dist/sw/package.json
+
+        '
+    - name: crates/actr-cli/assets sync drift gate
+      run: bash packages/actr-web/scripts/sync-cli-assets.sh --check --skip-sw-host
+    - name: Run web-sdk unit tests (vitest)
+      working-directory: packages/actr-web
+      env:
+        PUPPETEER_SKIP_DOWNLOAD: 'true'
+        PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: 'true'
+      run: 'corepack enable
+
+        corepack prepare pnpm@9.15.9 --activate
+
+        pnpm install --frozen-lockfile
+
+        # Build the SDK (and its @actrium/actr-dom dependency, whose
+
+        # type declarations the SDK build consumes) so the test asserts
+
+        # the published dist service-worker bytes, not just the sources.
+
+        pnpm --filter @actrium/actr-dom run build
+
+        pnpm --filter @actrium/actr-web run build
+
+        # `pnpm exec` fails when the filter matches no project, so a
+
+        # removed/renamed web-sdk cannot silently turn this into a green
+
+        # no-op; `vitest run` fails when no test files are found.
+
+        pnpm --filter @actrium/actr-web exec vitest run
+
+        '
+    - name: Record observed cache outcomes
+      if: always()
+      env:
+        CI15_CACHE_REPORT: '[{"step": "ci15-cache-4", "action": "Swatinem/rust-cache@v2", "hit": "${{ steps.ci15-cache-4.outputs.cache-hit
+          }}", "outcome": "${{ steps.ci15-cache-4.outcome }}"}]'
+      run: echo "$CI15_CACHE_REPORT"; echo "$CI15_CACHE_REPORT" >> "$GITHUB_STEP_SUMMARY"
+  c_go_workloads:
+    name: C and Go Workloads
+    needs: determine
+    if: needs.determine.outputs.c_go_workloads == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v5
+    - name: Prepare Linux build space
+      uses: ./.github/actions/prepare-linux-build
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        targets: wasm32-wasip2,wasm32-unknown-unknown
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - uses: Swatinem/rust-cache@v2
+      with:
+        prefix-key: ${{ env.CI15_CACHE }}-rust
+      id: ci15-cache-4
+    - name: Install native build dependencies
+      run: "if ! command -v pkg-config >/dev/null 2>&1 || ! pkg-config --exists openssl || ! command -v cmake >/dev/null 2>&1;\
+        \ then\n  sudo apt-get update\n  sudo apt-get install -y pkg-config libssl-dev cmake\nfi\n"
+    - name: Install pinned native workload toolchains
+      env:
+        WIT_BINDGEN_SHA256: 06b173e5aa3f3a0f5b5597c3502e2885fc9c63300f59a21151971249dda82bf4
+        WASM_TOOLS_SHA256: 4e2898f7ca3bd0536218ed9b7b36ff7b86954c57ae0e6272fde69728cbe01088
+        WASI_SDK_SHA256: c6c38aab56e5de88adf6c1ebc9c3ae8da72f88ec2b656fb024eda8d4167a0bc5
+        WASI_ADAPTER_SHA256: 0acb10959bd3c1d2e7903ef82212910bfc156ab5698ef3f2ff669474ba59fb0a
+      run: "tool_root=\"$RUNNER_TEMP/actr-native-workload-tools\"\nmkdir -p \"$tool_root\"\n\ndownload() {\n  local url=\"\
+        $1\"\n  local output=\"$2\"\n  local sha256=\"$3\"\n  curl --fail --location --retry 3 --retry-all-errors \\\n   \
+        \ --output \"$output\" \\\n    \"$url\"\n  echo \"$sha256  $output\" | sha256sum --check --status\n}\n\ndownload \\\
+        \n  https://github.com/bytecodealliance/wit-bindgen/releases/download/v0.59.0/wit-bindgen-0.59.0-x86_64-linux.tar.gz\
+        \ \\\n  \"$tool_root/wit-bindgen.tar.gz\" \\\n  \"$WIT_BINDGEN_SHA256\"\nmkdir \"$tool_root/wit-bindgen\"\ntar --extract\
+        \ --gzip --file \"$tool_root/wit-bindgen.tar.gz\" \\\n  --strip-components=1 --directory \"$tool_root/wit-bindgen\"\
+        \n\ndownload \\\n  https://github.com/bytecodealliance/wasm-tools/releases/download/v1.253.0/wasm-tools-1.253.0-x86_64-linux.tar.gz\
+        \ \\\n  \"$tool_root/wasm-tools.tar.gz\" \\\n  \"$WASM_TOOLS_SHA256\"\nmkdir \"$tool_root/wasm-tools\"\ntar --extract\
+        \ --gzip --file \"$tool_root/wasm-tools.tar.gz\" \\\n  --strip-components=1 --directory \"$tool_root/wasm-tools\"\n\
+        \ndownload \\\n  https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-24/wasi-sdk-24.0-x86_64-linux.tar.gz\
+        \ \\\n  \"$tool_root/wasi-sdk.tar.gz\" \\\n  \"$WASI_SDK_SHA256\"\nmkdir \"$tool_root/wasi-sdk\"\ntar --extract --gzip\
+        \ --file \"$tool_root/wasi-sdk.tar.gz\" \\\n  --strip-components=1 --directory \"$tool_root/wasi-sdk\"\n\ndownload\
+        \ \\\n  https://github.com/bytecodealliance/wasmtime/releases/download/v46.0.1/wasi_snapshot_preview1.reactor.wasm\
+        \ \\\n  \"$tool_root/wasi_snapshot_preview1.reactor.wasm\" \\\n  \"$WASI_ADAPTER_SHA256\"\n\n{\n  echo \"WIT_BINDGEN=$tool_root/wit-bindgen/wit-bindgen\"\
+        \n  echo \"WASM_TOOLS=$tool_root/wasm-tools/wasm-tools\"\n  echo \"WASI_SDK=$tool_root/wasi-sdk\"\n  echo \"WASI_ADAPTER=$tool_root/wasi_snapshot_preview1.reactor.wasm\"\
+        \n} >> \"$GITHUB_ENV\"\n"
+    - name: Build and validate C V2 workload
+      run: make -C examples/actr/c/echo-workload verify WIT_BINDGEN="$WIT_BINDGEN" WASM_TOOLS="$WASM_TOOLS" WASI_SDK="$WASI_SDK"
+        WASI_ADAPTER="$WASI_ADAPTER"
+    - name: Build and validate Go V2 workload
+      run: bash examples/actr/go/echo-workload/build.sh
+    - name: Execute C and Go workloads through the actr host
+      env:
+        ACTR_C_ECHO_COMPONENT: ${{ github.workspace }}/examples/actr/c/echo-workload/dist/echo-c-0.1.0-wasm32-wasip2.wasm
+        ACTR_GO_ECHO_COMPONENT: ${{ github.workspace }}/examples/actr/go/echo-workload/dist/echo-go-0.1.0-wasm32-wasip2.wasm
+        ACTR_WASM_FAST_COMPILE: '1'
+      run: cargo test -p actr-hyper --test native_workload_smoke --features wasm-engine,test-utils --locked -- --ignored --nocapture
+    - name: Record observed cache outcomes
+      if: always()
+      env:
+        CI15_CACHE_REPORT: '[{"step": "ci15-cache-4", "action": "Swatinem/rust-cache@v2", "hit": "${{ steps.ci15-cache-4.outputs.cache-hit
+          }}", "outcome": "${{ steps.ci15-cache-4.outcome }}"}]'
+      run: echo "$CI15_CACHE_REPORT"; echo "$CI15_CACHE_REPORT" >> "$GITHUB_STEP_SUMMARY"
+  webrtc:
+    name: WebRTC
+    needs: determine
+    if: needs.determine.outputs.rust_core == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      CARGO_TERM_COLOR: always
+      RUST_BACKTRACE: 1
+      RUSTUP_TOOLCHAIN: 1.99.0
+    steps:
+    - uses: actions/checkout@v5
+    - name: Prepare Linux build space
+      uses: ./.github/actions/prepare-linux-build
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        components: clippy
+        targets: wasm32-wasip2,wasm32-unknown-unknown
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - uses: Swatinem/rust-cache@v2
+      with:
+        cache-targets: false
+        prefix-key: ${{ env.CI15_CACHE }}-rust
+      id: ci15-cache-4
+    - name: Candidate shared prebuilt Wasm tools
+      uses: ./.github/actions/install-wasm-tools
+      if: contains(github.ref_name, 'ci15-combined-candidate-')
+    - name: Install wasm Component Model toolchain
+      run: "if ! wasm-component-ld --version 2>/dev/null | grep -Fxq \"wasm-component-ld 0.5.26\"; then\n  cargo install wasm-component-ld\
+        \ --version 0.5.26 --locked --force\nfi\nwasm-component-ld --version 2>/dev/null | grep -Fxq \"wasm-component-ld 0.5.26\"\
+        \nif ! wasm-tools --version 2>/dev/null | grep -Eq '^wasm-tools 1\\.253\\.0( \\(.*\\))?$'; then\n  cargo install wasm-tools\
+        \ --version 1.253.0 --locked --force\nfi\nwasm-tools --version 2>/dev/null | grep -Eq '^wasm-tools 1\\.253\\.0( \\\
+        (.*\\))?$'\n"
+      if: '!contains(github.ref_name, ''ci15-combined-candidate-'')'
+    - name: Install cargo-nextest
+      uses: taiki-e/install-action@cargo-nextest
+    - name: Check (WebRTC)
+      run: cargo check -p actr-hyper --all-targets
+      if: '!contains(github.ref_name, ''ci15-combined-candidate-'')'
+    - name: Clippy (WebRTC, deny warnings)
+      env:
+        CARGO_BUILD_WARNINGS: deny
+      run: cargo +1.99.0 clippy -p actr-hyper --all-targets
+    - name: Test (WebRTC)
+      run: cargo nextest run -p actr-hyper -E 'test(/^wire::webrtc::rtc/)' --no-fail-fast
+    - name: Record observed cache outcomes
+      if: always()
+      env:
+        CI15_CACHE_REPORT: '[{"step": "ci15-cache-4", "action": "Swatinem/rust-cache@v2", "hit": "${{ steps.ci15-cache-4.outputs.cache-hit
+          }}", "outcome": "${{ steps.ci15-cache-4.outcome }}"}]'
+      run: echo "$CI15_CACHE_REPORT"; echo "$CI15_CACHE_REPORT" >> "$GITHUB_STEP_SUMMARY"
+  cjk:
+    name: Language Policy
+    runs-on: ubuntu-24.04
+    if: always()
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Check default-language content and portable paths
+      run: python .github/scripts/check_cjk.py
+    - name: Reject retired package protocol identifiers
+      run: 'python3 scripts/actrium/check_retired_protocol_names_test.py
+
+        scripts/actrium/check-retired-protocol-names.sh
+
+        '
+  csharp:
+    name: C#
+    needs: determine
+    if: needs.determine.outputs.csharp_binding == 'true'
+    uses: ./.github/workflows/ci15-combined-csharp.yml
+    with:
+      experiment_namespace: ${{ github.ref_name }}
+  gate:
+    name: Gate
+    runs-on: ubuntu-24.04
+    if: always()
+    needs:
+    - identity
+    - determine
+    - cli_web_assets
+    - e2e_rust
+    - e2e_package_runtime
+    - audit
+    - rust
+    - typescript
+    - typescript_workload
+    - python_codegen
+    - python_workload
+    - swift
+    - kotlin
+    - csharp
+    - web
+    - c_go_workloads
+    - test
+    - webrtc
+    - cjk
+    env:
+      MODE: ${{ needs.determine.outputs.mode }}
+      IDENTITY_RESULT: ${{ needs.identity.result }}
+      CHANGED_FILES_JSON: ${{ needs.determine.outputs.changed_files_json }}
+      REASONS_JSON: ${{ needs.determine.outputs.reasons_json }}
+      RUST_RESULT: ${{ needs.rust.result }}
+      AUDIT_RESULT: ${{ needs.audit.result }}
+      TYPESCRIPT_RESULT: ${{ needs.typescript.result }}
+      TYPESCRIPT_WORKLOAD_RESULT: ${{ needs.typescript_workload.result }}
+      PYTHON_CODEGEN_RESULT: ${{ needs.python_codegen.result }}
+      PYTHON_WORKLOAD_RESULT: ${{ needs.python_workload.result }}
+      SWIFT_RESULT: ${{ needs.swift.result }}
+      KOTLIN_RESULT: ${{ needs.kotlin.result }}
+      CSHARP_RESULT: ${{ needs.csharp.result }}
+      WEB_RESULT: ${{ needs.web.result }}
+      C_GO_WORKLOADS_RESULT: ${{ needs.c_go_workloads.result }}
+      CLI_WEB_ASSETS_RESULT: ${{ needs.cli_web_assets.result }}
+      E2E_RUST_RESULT: ${{ needs.e2e_rust.result }}
+      E2E_PACKAGE_RUNTIME_RESULT: ${{ needs.e2e_package_runtime.result }}
+      TEST_RESULT: ${{ needs.test.result }}
+      WEBRTC_RESULT: ${{ needs.webrtc.result }}
+      CJK_RESULT: ${{ needs.cjk.result }}
+    steps:
+    - name: Summarize gate
+      run: "python3 - <<'PY'\nimport json\nimport os\nimport sys\n\nresults = {\n    \"identity\": os.environ[\"IDENTITY_RESULT\"\
+        ],\n    \"audit\": os.environ[\"AUDIT_RESULT\"],\n    \"rust\": os.environ[\"RUST_RESULT\"],\n    \"typescript\":\
+        \ os.environ[\"TYPESCRIPT_RESULT\"],\n    \"typescript_workload\": os.environ[\"TYPESCRIPT_WORKLOAD_RESULT\"],\n \
+        \   \"python_codegen\": os.environ[\"PYTHON_CODEGEN_RESULT\"],\n    \"python_workload\": os.environ[\"PYTHON_WORKLOAD_RESULT\"\
+        ],\n    \"swift\": os.environ[\"SWIFT_RESULT\"],\n    \"kotlin\": os.environ[\"KOTLIN_RESULT\"],\n    \"csharp\":\
+        \ os.environ[\"CSHARP_RESULT\"],\n    \"web\": os.environ[\"WEB_RESULT\"],\n    \"c_go_workloads\": os.environ[\"\
+        C_GO_WORKLOADS_RESULT\"],\n    \"cli_web_assets\": os.environ[\"CLI_WEB_ASSETS_RESULT\"],\n    \"e2e_rust\": os.environ[\"\
+        E2E_RUST_RESULT\"],\n    \"e2e_package_runtime\": os.environ[\"E2E_PACKAGE_RUNTIME_RESULT\"],\n    \"test\": os.environ[\"\
+        TEST_RESULT\"],\n    \"webrtc\": os.environ[\"WEBRTC_RESULT\"],\n    \"cjk\": os.environ[\"CJK_RESULT\"],\n}\n\nchanged_files\
+        \ = json.loads(os.environ[\"CHANGED_FILES_JSON\"])\nreasons = json.loads(os.environ[\"REASONS_JSON\"])\nmode = os.environ[\"\
+        MODE\"]\n\nsummary_lines = [\n    \"## CI Gate\",\n    \"\",\n    f\"- Mode: `{mode}`\",\n    f\"- Changed files:\
+        \ `{len(changed_files)}`\",\n    \"\",\n    \"### Domain Results\",\n]\nsummary_lines.extend([f\"- `{name}`: `{result}`\"\
+        \ for name, result in results.items()])\n\nif reasons:\n    summary_lines.append(\"\")\n    summary_lines.append(\"\
+        ### Trigger Reasons\")\n    summary_lines.extend([f\"- `{reason}`\" for reason in reasons])\n\nif changed_files:\n\
+        \    summary_lines.append(\"\")\n    summary_lines.append(\"### Changed Files\")\n    summary_lines.extend([f\"- `{path}`\"\
+        \ for path in changed_files])\n\nif os.environ.get(\"GITHUB_STEP_SUMMARY\"):\n    with open(os.environ[\"GITHUB_STEP_SUMMARY\"\
+        ], \"a\", encoding=\"utf-8\") as fh:\n        fh.write(\"\\n\".join(summary_lines) + \"\\n\")\n\nfailed = [name for\
+        \ name, result in results.items() if result not in {\"success\", \"skipped\"}]\nif failed:\n    print(f\"CI gate failed\
+        \ because these domains did not pass: {', '.join(failed)}\", file=sys.stderr)\n    sys.exit(1)\nPY\n"
+  complete:
+    name: All workflow jobs including MSRV
+    if: always()
+    needs:
+    - identity
+    - determine
+    - cli_web_assets
+    - e2e_rust
+    - e2e_package_runtime
+    - audit
+    - rust
+    - test
+    - rust_msrv
+    - typescript
+    - typescript_workload
+    - python_codegen
+    - python_workload
+    - swift
+    - kotlin
+    - web
+    - c_go_workloads
+    - webrtc
+    - cjk
+    - csharp
+    - gate
+    runs-on: ubuntu-24.04
+    env:
+      RESULTS: ${{ toJSON(needs) }}
+    steps:
+    - name: Record every result independently of Gate
+      run: "python3 - <<'PYCODE'\nimport json,os,sys\nresults=json.loads(os.environ['RESULTS'])\nwith open(os.environ['GITHUB_STEP_SUMMARY'],'a')\
+        \ as f:\n    for name,value in results.items(): f.write(f\"- {name}: {value['result']}\\n\")\nif any(v['result'] !=\
+        \ 'success' for v in results.values()): sys.exit(1)\nPYCODE"
+'on':
+  push:
+    branches:
+    - experiment/ci15-combined-*
+defaults:
+  run:
+    shell: bash
+env:
+  CI15_CACHE: ${{ github.ref_name }}
+  SCCACHE_GHA_VERSION: ${{ github.ref_name }}

@@ -1,0 +1,223 @@
+name: CI15 Combined CI (Kotlin)
+permissions:
+  contents: read
+jobs:
+  script-check:
+    name: Kotlin Android Script Check
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v5
+    - name: Test SDK error message generation
+      run: python3 scripts/actr/tests/test_patch_error_messages.py
+    - name: Validate Android build script
+      run: scripts/actr/tests/kotlin-android-build-script.sh
+  native-build:
+    name: Kotlin Android Native Build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        targets: aarch64-linux-android,x86_64-linux-android
+    - name: Setup Android NDK
+      uses: android-actions/setup-android@v3
+      with:
+        packages: ndk;25.2.9519653
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - name: Build both Android ABIs from source
+      env:
+        ACTR_BUILD_HOST_LIBRARY: 'false'
+        ACTR_GENERATE_KOTLIN_BINDINGS: 'false'
+        ACTR_COPY_DEMO_JNILIBS: 'false'
+      run: bash packages/actr-kotlin/build-android.sh
+    - name: Verify bundled Opus linkage
+      run: "for abi in arm64-v8a x86_64; do\n  directory=\"packages/actr-kotlin/actr-kotlin/src/main/jniLibs/$abi\"\n  dynamic=$(readelf\
+        \ --dynamic \"$directory/libactr.so\")\n  symbols=$(readelf --dyn-syms --wide \"$directory/libactr.so\")\n  if [[\
+        \ \"$dynamic\" == *libopus.so* ]] ||\n     awk '$7 == \"UND\" && $8 ~ /^opus_/ { found = 1 } END { exit !found }'\
+        \ <<< \"$symbols\"; then\n    echo \"error: $abi still requires external Opus symbols\" >&2\n    exit 1\n  fi\n  test\
+        \ ! -e \"$directory/libopus.so\"\ndone\n"
+  test:
+    name: Kotlin Binding Test
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v5
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: temurin
+    - name: Namespaced gradle package cache
+      uses: actions/cache@v4
+      with:
+        path: '~/.gradle/caches
+
+          ~/.gradle/wrapper'
+        key: ${{ env.CI15_CACHE }}-gradle-17-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties')
+          }}
+      id: ci15-cache-2
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        packages: platforms;android-34 build-tools;34.0.0
+    - name: Kotlin lint (ktlint)
+      working-directory: packages/actr-kotlin
+      run: ./gradlew ktlintCheck --no-daemon
+    - name: Run unit tests
+      working-directory: packages/actr-kotlin
+      run: ./gradlew :actr-kotlin:test --no-daemon
+    - name: Build Kotlin binding
+      working-directory: packages/actr-kotlin
+      run: ./gradlew :actr-kotlin:build --no-daemon
+    - name: Validate Maven publication coordinates
+      working-directory: packages/actr-kotlin
+      run: "./gradlew :actr-kotlin:generatePomFileForMavenPublication \\\n  --no-daemon \\\n  -PactrGroup=io.actrium \\\n\
+        \  -PactrVersion=9.8.7-rc.1 \\\n  -PactrSourceRepository=Actrium/actrium \\\n  -PactrSourceTag=validation-v9.8.7-rc.1\
+        \ \\\n  -PactrSourceSha=0123456789abcdef\npython3 - <<'PY'\nfrom pathlib import Path\nfrom xml.etree import ElementTree\n\
+        \npom = Path(\"actr-kotlin/build/publications/maven/pom-default.xml\")\nroot = ElementTree.parse(pom).getroot()\n\
+        actual = (\n    root.findtext(\"{*}groupId\"),\n    root.findtext(\"{*}artifactId\"),\n    root.findtext(\"{*}version\"\
+        ),\n)\nexpected = (\"io.actrium\", \"actr\", \"9.8.7-rc.1\")\nif actual != expected:\n    raise SystemExit(f\"Maven\
+        \ coordinates mismatch: expected {expected}, got {actual}\")\nproperties = root.find(\"{*}properties\")\nif properties\
+        \ is None:\n    raise SystemExit(\"Maven provenance properties are missing\")\nactual_provenance = {\n    child.tag.rsplit(\"\
+        }\", 1)[-1]: child.text\n    for child in properties\n}\nexpected_provenance = {\n    \"actr.source.repository\":\
+        \ \"Actrium/actrium\",\n    \"actr.source.tag\": \"validation-v9.8.7-rc.1\",\n    \"actr.source.sha\": \"0123456789abcdef\"\
+        ,\n}\nif actual_provenance != expected_provenance:\n    raise SystemExit(\n        f\"Maven provenance mismatch: expected\
+        \ {expected_provenance}, \"\n        f\"got {actual_provenance}\"\n    )\nPY\n"
+    - name: Record observed cache outcomes
+      if: always()
+      env:
+        CI15_CACHE_REPORT: '[{"step": "ci15-cache-2", "action": "actions/cache@v4", "hit": "${{ steps.ci15-cache-2.outputs.cache-hit
+          }}", "outcome": "${{ steps.ci15-cache-2.outcome }}"}]'
+      run: echo "$CI15_CACHE_REPORT"; echo "$CI15_CACHE_REPORT" >> "$GITHUB_STEP_SUMMARY"
+  gen-test:
+    name: Kotlin Codegen Test
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v5
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        targets: wasm32-unknown-unknown
+    - uses: Swatinem/rust-cache@v2
+      with:
+        prefix-key: ${{ env.CI15_CACHE }}-rust
+      id: ci15-cache-2
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: temurin
+    - name: Namespaced gradle package cache
+      uses: actions/cache@v4
+      with:
+        path: '~/.gradle/caches
+
+          ~/.gradle/wrapper'
+        key: ${{ env.CI15_CACHE }}-gradle-17-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties')
+          }}
+      id: ci15-cache-4
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        packages: platforms;android-34 build-tools;34.0.0
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - name: Cache wasm-pack binary
+      if: inputs.cli_web_runtime_artifact == ''
+      id: wasm-pack-cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/bin/wasm-pack
+        key: ${{ env.CI15_CACHE }}-wasm-pack-binary-v2-${{ runner.os }}-0.15.0
+    - name: Install wasm-pack
+      if: inputs.cli_web_runtime_artifact == ''
+      run: "if ! wasm-pack --version 2>/dev/null | grep -Fxq \"wasm-pack 0.15.0\"; then\n  cargo install wasm-pack --version\
+        \ 0.15.0 --locked --force\nfi\nwasm-pack --version 2>/dev/null | grep -Fxq \"wasm-pack 0.15.0\"\n"
+    - name: Download CLI web runtime assets
+      if: inputs.cli_web_runtime_artifact != ''
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ inputs.cli_web_runtime_artifact }}
+        path: crates/actr-cli/assets/web-runtime
+    - name: Sync CLI source assets
+      if: inputs.cli_web_runtime_artifact != ''
+      run: 'test -s crates/actr-cli/assets/web-runtime/actr_sw_host_bg.wasm
+
+        test -s crates/actr-cli/assets/web-runtime/actr_sw_host.js
+
+        bash packages/actr-web/scripts/sync-cli-assets.sh --skip-sw-host
+
+        '
+    - name: Generate CLI web runtime assets
+      if: inputs.cli_web_runtime_artifact == ''
+      run: bash packages/actr-web/scripts/sync-cli-assets.sh --build
+    - name: Cache Gradle build outputs
+      uses: actions/cache@v4
+      with:
+        path: 'packages/actr-kotlin/demo/build
+
+          packages/actr-kotlin/build
+
+          tools/actr/protoc-gen/kotlin/build
+
+          '
+        key: ${{ env.CI15_CACHE }}-gradle-build-${{ runner.os }}-${{ hashFiles('packages/actr-kotlin/**/*.kt', 'tools/actr/protoc-gen/kotlin/**/*.kt',
+          'packages/actr-kotlin/**/build.gradle.kts', 'tools/actr/protoc-gen/kotlin/**/build.gradle.kts') }}
+      id: ci15-cache-12
+    - name: Compile Kotlin demo and build protoc plugin (parallel)
+      run: '# Wait on each PID explicitly: bare `wait` with no args always
+
+        # returns 0 even if a background job failed, which would silently
+
+        # mask compile failures. Keep failures in an `||` list so `bash -e`
+
+        # still reaps both jobs before the step exits.
+
+        (cd packages/actr-kotlin && ./gradlew :demo:compileDebugKotlin --no-daemon) & pid1=$!
+
+        (cd tools/actr/protoc-gen/kotlin && ./gradlew protocPluginJar --no-daemon) & pid2=$!
+
+        rc1=0
+
+        rc2=0
+
+        wait "$pid1" || rc1=$?
+
+        wait "$pid2" || rc2=$?
+
+        exit $((rc1 | rc2))
+
+        '
+    - name: Run Kotlin codegen integration tests
+      run: cargo test -p actr-cli --test kotlin_echo --verbose
+    - name: Record observed cache outcomes
+      if: always()
+      env:
+        CI15_CACHE_REPORT: '[{"step": "ci15-cache-2", "action": "Swatinem/rust-cache@v2", "hit": "${{ steps.ci15-cache-2.outputs.cache-hit
+          }}", "outcome": "${{ steps.ci15-cache-2.outcome }}"}, {"step": "ci15-cache-4", "action": "actions/cache@v4", "hit":
+          "${{ steps.ci15-cache-4.outputs.cache-hit }}", "outcome": "${{ steps.ci15-cache-4.outcome }}"}, {"step": "wasm-pack-cache",
+          "action": "actions/cache@v4", "hit": "${{ steps.wasm-pack-cache.outputs.cache-hit }}", "outcome": "${{ steps.wasm-pack-cache.outcome
+          }}"}, {"step": "ci15-cache-12", "action": "actions/cache@v4", "hit": "${{ steps.ci15-cache-12.outputs.cache-hit
+          }}", "outcome": "${{ steps.ci15-cache-12.outcome }}"}]'
+      run: echo "$CI15_CACHE_REPORT"; echo "$CI15_CACHE_REPORT" >> "$GITHUB_STEP_SUMMARY"
+'on':
+  workflow_call:
+    inputs:
+      cli_web_runtime_artifact:
+        description: Generated CLI runtime artifact from the calling CI Gate run
+        type: string
+        required: false
+        default: ''
+      experiment_namespace:
+        type: string
+        required: true
+env:
+  CI15_CACHE: ${{ inputs.experiment_namespace }}
+  SCCACHE_GHA_VERSION: ${{ inputs.experiment_namespace }}

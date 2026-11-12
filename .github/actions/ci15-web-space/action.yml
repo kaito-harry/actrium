@@ -1,0 +1,12 @@
+name: Measured Web Runtime space guard
+description: Skip broad cleanup only when at least 10 GiB is free; otherwise use the original cleanup.
+runs:
+  using: composite
+  steps:
+    - name: Measure current free disk
+      id: space
+      shell: bash
+      run: python3 .github/scripts/ci15-space-guard.py
+    - name: Original low-space cleanup
+      if: steps.space.outputs.cleanup_needed == 'true'
+      uses: ./.github/actions/prepare-linux-build
