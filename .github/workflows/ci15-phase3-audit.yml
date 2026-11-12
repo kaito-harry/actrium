@@ -1,0 +1,305 @@
+name: CI15 phase3 WebRTC and UniFFI controlled cold experiment
+'on':
+  push:
+    branches:
+    - experiment/ci15-phase3-audit-20261112
+permissions:
+  contents: read
+jobs:
+  webrtc_a:
+    name: WebRTC a cold
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      CARGO_TERM_COLOR: always
+      RUST_BACKTRACE: 1
+      RUSTUP_TOOLCHAIN: 1.99.0
+      SCCACHE_GHA_VERSION: ci15-20261112-v1-batch1
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        ref: 9cf6a9e37eb7e51b879d3ceb39a2bf01af19dec9
+    - name: Prepare Linux build space
+      uses: ./.github/actions/prepare-linux-build
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        components: clippy
+        targets: wasm32-wasip2,wasm32-unknown-unknown
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - name: Install pinned prebuilt WebAssembly tools
+      uses: ./.github/actions/install-wasm-tools
+    - name: Install cargo-nextest
+      uses: taiki-e/install-action@cargo-nextest
+    - name: Check (WebRTC)
+      run: cargo check -p actr-hyper --all-targets --message-format=json | tee "$RUNNER_TEMP/check.jsonl"
+    - name: Clippy (WebRTC, deny warnings)
+      env:
+        CARGO_BUILD_WARNINGS: deny
+      run: cargo +1.99.0 clippy -p actr-hyper --all-targets --message-format=json | tee "$RUNNER_TEMP/clippy.jsonl"
+    - name: Test (WebRTC)
+      run: cargo nextest run -p actr-hyper -E 'test(/^wire::webrtc::rtc/)' --no-fail-fast 2>&1 | tee "$RUNNER_TEMP/nextest-run.txt"
+    - name: Disk usage at end
+      if: always()
+      run: df -h /; du -sh target 2>/dev/null || true
+    - name: Record selected tests and feature graph
+      run: 'cargo nextest list -p actr-hyper -E ''test(/^wire::webrtc::rtc/)'' --message-format json > "$RUNNER_TEMP/nextest-list.json"
+
+        cargo tree -p actr-hyper -e features > "$RUNNER_TEMP/features.txt"
+
+        rustc -vV > "$RUNNER_TEMP/rustc.txt"'
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: webrtc-a-evidence
+        path: '${{ runner.temp }}/*.jsonl
+
+          ${{ runner.temp }}/nextest-*
+
+          ${{ runner.temp }}/features.txt
+
+          ${{ runner.temp }}/rustc.txt'
+        retention-days: 7
+    timeout-minutes: 45
+  webrtc_b:
+    name: WebRTC b cold
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      CARGO_TERM_COLOR: always
+      RUST_BACKTRACE: 1
+      RUSTUP_TOOLCHAIN: 1.99.0
+      SCCACHE_GHA_VERSION: ci15-20261112-v1-batch1
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        ref: 9cf6a9e37eb7e51b879d3ceb39a2bf01af19dec9
+    - name: Prepare Linux build space
+      uses: ./.github/actions/prepare-linux-build
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        components: clippy
+        targets: wasm32-wasip2,wasm32-unknown-unknown
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - name: Install pinned prebuilt WebAssembly tools
+      uses: ./.github/actions/install-wasm-tools
+    - name: Install cargo-nextest
+      uses: taiki-e/install-action@cargo-nextest
+    - name: Clippy (WebRTC, deny warnings)
+      env:
+        CARGO_BUILD_WARNINGS: deny
+      run: cargo +1.99.0 clippy -p actr-hyper --all-targets --message-format=json | tee "$RUNNER_TEMP/clippy.jsonl"
+    - name: Test (WebRTC)
+      run: cargo nextest run -p actr-hyper -E 'test(/^wire::webrtc::rtc/)' --no-fail-fast 2>&1 | tee "$RUNNER_TEMP/nextest-run.txt"
+    - name: Disk usage at end
+      if: always()
+      run: df -h /; du -sh target 2>/dev/null || true
+    - name: Record selected tests and feature graph
+      run: 'cargo nextest list -p actr-hyper -E ''test(/^wire::webrtc::rtc/)'' --message-format json > "$RUNNER_TEMP/nextest-list.json"
+
+        cargo tree -p actr-hyper -e features > "$RUNNER_TEMP/features.txt"
+
+        rustc -vV > "$RUNNER_TEMP/rustc.txt"'
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: webrtc-b-evidence
+        path: '${{ runner.temp }}/*.jsonl
+
+          ${{ runner.temp }}/nextest-*
+
+          ${{ runner.temp }}/features.txt
+
+          ${{ runner.temp }}/rustc.txt'
+        retention-days: 7
+    timeout-minutes: 45
+  uniffi_producer:
+    name: UniFFI producer cold total cost
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+    - uses: dtolnay/rust-toolchain@1.99.0
+    - name: Compile locked UniFFI official crate
+      run: 'set -euo pipefail
+
+        cargo install --locked uniffi --version 0.31.1 --features cli --bin uniffi-bindgen --root "$RUNNER_TEMP/uniffi"
+
+        cd "$RUNNER_TEMP/uniffi/bin"
+
+        ./uniffi-bindgen --version | tee VERSION
+
+        uname -m > ARCH
+
+        rustc -vV > RUSTC
+
+        shasum -a 256 uniffi-bindgen > SHA256SUMS'
+    - uses: actions/upload-artifact@v4
+      with:
+        name: uniffi-0.31.1-macos-arm64
+        path: ${{ runner.temp }}/uniffi/bin/
+        retention-days: 7
+  swift_a:
+    name: Swift a cold source tool
+    runs-on: macos-latest
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        ref: 9cf6a9e37eb7e51b879d3ceb39a2bf01af19dec9
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        targets: aarch64-apple-darwin
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - name: Install UniFFI bindgen
+      run: cargo install --locked uniffi --version 0.31.1 --features cli --bin uniffi-bindgen --force
+    - name: Install Swift tools and libraries
+      run: brew install swiftlint opus
+    - name: Run SwiftLint
+      run: swiftlint lint --strict
+    - name: Check actr-cabi header sync
+      run: git diff --no-index --exit-code -- crates/actr-cabi/actr-cabi.h packages/actr-cabi/swift/Sources/ActrCabi/include/actr-cabi.h
+    - name: Type-check actr-cabi Swift wrapper
+      run: swiftc -typecheck -swift-version 6 -I packages/actr-cabi/swift/Sources/ActrCabi/include packages/actr-cabi/swift/Sources/ActrCabi/ActrCabi.swift
+    - name: Build local Swift XCFramework
+      working-directory: packages/actr-swift
+      env:
+        ACTR_BUILD_PROFILE: debug
+        ACTR_XCFRAMEWORK_TARGETS: macos
+        CMAKE_POLICY_VERSION_MINIMUM: '3.5'
+      run: './build-xcframework.sh
+
+        '
+    - name: Build Swift bindings package
+      working-directory: packages/actr-swift
+      run: 'swift build
+
+        '
+    - name: Pre-build mock-loran
+      run: cargo build -p actr-mock-loran --bin mock-loran
+    - name: Test Swift bindings package
+      working-directory: packages/actr-swift
+      env:
+        ACTR_SWIFT_E2E: '1'
+      run: "../../target/debug/mock-loran --port 8081 > \"$RUNNER_TEMP/mock-loran.log\" 2>&1 &\nmock_pid=\"$!\"\ntrap 'kill\
+        \ \"$mock_pid\" || true' EXIT\nfor _ in {1..60}; do\n  if grep -q \"mock-loran listening\" \"$RUNNER_TEMP/mock-loran.log\"\
+        ; then\n    cat \"$RUNNER_TEMP/mock-loran.log\"\n    break\n  fi\n  if ! kill -0 \"$mock_pid\" 2>/dev/null; then\n\
+        \    cat \"$RUNNER_TEMP/mock-loran.log\"\n    exit 1\n  fi\n  sleep 1\ndone\nif ! grep -q \"mock-loran listening\"\
+        \ \"$RUNNER_TEMP/mock-loran.log\"; then\n  cat \"$RUNNER_TEMP/mock-loran.log\"\n  exit 1\nfi\nACTR_BINDINGS_PATH=dist/ActrBindings\
+        \ \\\nACTR_BINARY_PATH=dist/ActrFFI.xcframework \\\nswift test\n"
+    - name: Build Swift codegen package
+      working-directory: tools/actr/protoc-gen/swift
+      run: swift build
+    - name: Disk usage at end
+      if: always()
+      run: df -h /; du -sh target 2>/dev/null || true
+    env:
+      SCCACHE_GHA_VERSION: ci15-20261112-v1-batch1
+    timeout-minutes: 45
+  swift_b:
+    name: Swift b cold verified tool artifact
+    runs-on: macos-latest
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        ref: 9cf6a9e37eb7e51b879d3ceb39a2bf01af19dec9
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        targets: aarch64-apple-darwin
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - uses: actions/download-artifact@v4
+      with:
+        name: uniffi-0.31.1-macos-arm64
+        path: ${{ runner.temp }}/uniffi-tool
+    - name: Verify tool manifest and executable
+      run: 'set -euo pipefail
+
+        cd "$RUNNER_TEMP/uniffi-tool"
+
+        shasum -a 256 -c SHA256SUMS
+
+        test "$(cat ARCH)" = "$(uname -m)"
+
+        grep -F ''0.31.1'' VERSION
+
+        rustc -vV > CURRENT_RUSTC
+
+        cmp RUSTC CURRENT_RUSTC
+
+        chmod +x uniffi-bindgen
+
+        ./uniffi-bindgen --version > ACTUAL_VERSION
+
+        cmp VERSION ACTUAL_VERSION
+
+        echo "$RUNNER_TEMP/uniffi-tool" >> "$GITHUB_PATH"'
+    - name: Install Swift tools and libraries
+      run: brew install swiftlint opus
+    - name: Run SwiftLint
+      run: swiftlint lint --strict
+    - name: Check actr-cabi header sync
+      run: git diff --no-index --exit-code -- crates/actr-cabi/actr-cabi.h packages/actr-cabi/swift/Sources/ActrCabi/include/actr-cabi.h
+    - name: Type-check actr-cabi Swift wrapper
+      run: swiftc -typecheck -swift-version 6 -I packages/actr-cabi/swift/Sources/ActrCabi/include packages/actr-cabi/swift/Sources/ActrCabi/ActrCabi.swift
+    - name: Build local Swift XCFramework
+      working-directory: packages/actr-swift
+      env:
+        ACTR_BUILD_PROFILE: debug
+        ACTR_XCFRAMEWORK_TARGETS: macos
+        CMAKE_POLICY_VERSION_MINIMUM: '3.5'
+      run: './build-xcframework.sh
+
+        '
+    - name: Build Swift bindings package
+      working-directory: packages/actr-swift
+      run: 'swift build
+
+        '
+    - name: Pre-build mock-loran
+      run: cargo build -p actr-mock-loran --bin mock-loran
+    - name: Test Swift bindings package
+      working-directory: packages/actr-swift
+      env:
+        ACTR_SWIFT_E2E: '1'
+      run: "../../target/debug/mock-loran --port 8081 > \"$RUNNER_TEMP/mock-loran.log\" 2>&1 &\nmock_pid=\"$!\"\ntrap 'kill\
+        \ \"$mock_pid\" || true' EXIT\nfor _ in {1..60}; do\n  if grep -q \"mock-loran listening\" \"$RUNNER_TEMP/mock-loran.log\"\
+        ; then\n    cat \"$RUNNER_TEMP/mock-loran.log\"\n    break\n  fi\n  if ! kill -0 \"$mock_pid\" 2>/dev/null; then\n\
+        \    cat \"$RUNNER_TEMP/mock-loran.log\"\n    exit 1\n  fi\n  sleep 1\ndone\nif ! grep -q \"mock-loran listening\"\
+        \ \"$RUNNER_TEMP/mock-loran.log\"; then\n  cat \"$RUNNER_TEMP/mock-loran.log\"\n  exit 1\nfi\nACTR_BINDINGS_PATH=dist/ActrBindings\
+        \ \\\nACTR_BINARY_PATH=dist/ActrFFI.xcframework \\\nswift test\n"
+    - name: Build Swift codegen package
+      working-directory: tools/actr/protoc-gen/swift
+      run: swift build
+    - name: Disk usage at end
+      if: always()
+      run: df -h /; du -sh target 2>/dev/null || true
+    env:
+      SCCACHE_GHA_VERSION: ci15-20261112-v1-batch1
+    timeout-minutes: 45
+    needs: uniffi_producer
+defaults:
+  run:
+    shell: bash
