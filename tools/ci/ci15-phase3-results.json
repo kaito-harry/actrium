@@ -1,0 +1,1255 @@
+{
+  "run": 43188883243,
+  "source": "9cf6a9e37eb7e51b879d3ceb39a2bf01af19dec9",
+  "jobs": [
+    {
+      "id": 131082871798,
+      "run_id": 43188883243,
+      "workflow_name": "CI15 phase3 WebRTC and UniFFI controlled cold experiment",
+      "head_branch": "experiment/ci15-phase3-audit-20261112",
+      "run_url": "https://api.github.com/repos/kaito-harry/actrium/actions/runs/43188883243",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOVj0iNc8AAAAehSXj9g",
+      "head_sha": "30d7b32ca2d7734408620338d2f5a777f23035cb",
+      "url": "https://api.github.com/repos/kaito-harry/actrium/actions/jobs/131082871798",
+      "html_url": "https://github.com/kaito-harry/actrium/actions/runs/43188883243/job/131082871798",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-12T09:08:58Z",
+      "started_at": "2026-11-12T09:09:00Z",
+      "completed_at": "2026-11-12T09:19:35Z",
+      "name": "WebRTC b cold",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-12T09:09:01Z",
+          "completed_at": "2026-11-12T09:09:03Z"
+        },
+        {
+          "name": "Run actions/checkout@v5",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-12T09:09:03Z",
+          "completed_at": "2026-11-12T09:09:05Z"
+        },
+        {
+          "name": "Prepare Linux build space",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-12T09:09:05Z",
+          "completed_at": "2026-11-12T09:10:28Z"
+        },
+        {
+          "name": "Setup Rust",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-12T09:10:28Z",
+          "completed_at": "2026-11-12T09:10:40Z"
+        },
+        {
+          "name": "Install protoc",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-12T09:10:40Z",
+          "completed_at": "2026-11-12T09:10:45Z"
+        },
+        {
+          "name": "Install pinned prebuilt WebAssembly tools",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-12T09:10:45Z",
+          "completed_at": "2026-11-12T09:10:46Z"
+        },
+        {
+          "name": "Install cargo-nextest",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-12T09:10:46Z",
+          "completed_at": "2026-11-12T09:10:46Z"
+        },
+        {
+          "name": "Clippy (WebRTC, deny warnings)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-12T09:10:46Z",
+          "completed_at": "2026-11-12T09:13:45Z"
+        },
+        {
+          "name": "Test (WebRTC)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-11-12T09:13:45Z",
+          "completed_at": "2026-11-12T09:19:29Z"
+        },
+        {
+          "name": "Disk usage at end",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-11-12T09:19:29Z",
+          "completed_at": "2026-11-12T09:19:29Z"
+        },
+        {
+          "name": "Record selected tests and feature graph",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-11-12T09:19:29Z",
+          "completed_at": "2026-11-12T09:19:32Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-11-12T09:19:32Z",
+          "completed_at": "2026-11-12T09:19:33Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v5",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-11-12T09:19:33Z",
+          "completed_at": "2026-11-12T09:19:33Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-11-12T09:19:33Z",
+          "completed_at": "2026-11-12T09:19:33Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/kaito-harry/actrium/check-runs/131082871798",
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "runner_id": 1000004294,
+      "runner_name": "GitHub Actions 1000004294",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 131082872192,
+      "run_id": 43188883243,
+      "workflow_name": "CI15 phase3 WebRTC and UniFFI controlled cold experiment",
+      "head_branch": "experiment/ci15-phase3-audit-20261112",
+      "run_url": "https://api.github.com/repos/kaito-harry/actrium/actions/runs/43188883243",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOVj0iNc8AAAAehSXlgA",
+      "head_sha": "30d7b32ca2d7734408620338d2f5a777f23035cb",
+      "url": "https://api.github.com/repos/kaito-harry/actrium/actions/jobs/131082872192",
+      "html_url": "https://github.com/kaito-harry/actrium/actions/runs/43188883243/job/131082872192",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-12T09:08:58Z",
+      "started_at": "2026-11-12T09:09:01Z",
+      "completed_at": "2026-11-12T09:15:03Z",
+      "name": "Swift a cold source tool",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-12T09:09:01Z",
+          "completed_at": "2026-11-12T09:09:02Z"
+        },
+        {
+          "name": "Run actions/checkout@v5",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-12T09:09:02Z",
+          "completed_at": "2026-11-12T09:09:06Z"
+        },
+        {
+          "name": "Set up Rust",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-12T09:09:06Z",
+          "completed_at": "2026-11-12T09:09:12Z"
+        },
+        {
+          "name": "Install protoc",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-12T09:09:12Z",
+          "completed_at": "2026-11-12T09:09:18Z"
+        },
+        {
+          "name": "Install UniFFI bindgen",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-12T09:09:18Z",
+          "completed_at": "2026-11-12T09:11:01Z"
+        },
+        {
+          "name": "Install Swift tools and libraries",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-12T09:11:01Z",
+          "completed_at": "2026-11-12T09:11:06Z"
+        },
+        {
+          "name": "Run SwiftLint",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-12T09:11:06Z",
+          "completed_at": "2026-11-12T09:11:07Z"
+        },
+        {
+          "name": "Check actr-cabi header sync",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-12T09:11:07Z",
+          "completed_at": "2026-11-12T09:11:07Z"
+        },
+        {
+          "name": "Type-check actr-cabi Swift wrapper",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-11-12T09:11:07Z",
+          "completed_at": "2026-11-12T09:11:12Z"
+        },
+        {
+          "name": "Build local Swift XCFramework",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-11-12T09:11:12Z",
+          "completed_at": "2026-11-12T09:13:14Z"
+        },
+        {
+          "name": "Build Swift bindings package",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-11-12T09:13:14Z",
+          "completed_at": "2026-11-12T09:13:48Z"
+        },
+        {
+          "name": "Pre-build mock-loran",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-11-12T09:13:48Z",
+          "completed_at": "2026-11-12T09:14:11Z"
+        },
+        {
+          "name": "Test Swift bindings package",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-11-12T09:14:11Z",
+          "completed_at": "2026-11-12T09:14:43Z"
+        },
+        {
+          "name": "Build Swift codegen package",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-11-12T09:14:43Z",
+          "completed_at": "2026-11-12T09:14:59Z"
+        },
+        {
+          "name": "Disk usage at end",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-12T09:14:59Z",
+          "completed_at": "2026-11-12T09:14:59Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v5",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 30,
+          "started_at": "2026-11-12T09:14:59Z",
+          "completed_at": "2026-11-12T09:15:00Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 31,
+          "started_at": "2026-11-12T09:15:00Z",
+          "completed_at": "2026-11-12T09:15:01Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/kaito-harry/actrium/check-runs/131082872192",
+      "labels": [
+        "macos-latest"
+      ],
+      "runner_id": 1000004295,
+      "runner_name": "GitHub Actions 1000004295",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 131082872216,
+      "run_id": 43188883243,
+      "workflow_name": "CI15 phase3 WebRTC and UniFFI controlled cold experiment",
+      "head_branch": "experiment/ci15-phase3-audit-20261112",
+      "run_url": "https://api.github.com/repos/kaito-harry/actrium/actions/runs/43188883243",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOVj0iNc8AAAAehSXlmA",
+      "head_sha": "30d7b32ca2d7734408620338d2f5a777f23035cb",
+      "url": "https://api.github.com/repos/kaito-harry/actrium/actions/jobs/131082872216",
+      "html_url": "https://github.com/kaito-harry/actrium/actions/runs/43188883243/job/131082872216",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "created_at": "2026-11-12T09:08:58Z",
+      "started_at": "2026-11-12T09:08:58Z",
+      "completed_at": "2026-11-12T09:24:00Z",
+      "name": "UniFFI producer cold total cost",
+      "steps": [],
+      "check_run_url": "https://api.github.com/repos/kaito-harry/actrium/check-runs/131082872216",
+      "labels": [
+        "macos-latest"
+      ],
+      "runner_id": 0,
+      "runner_name": "",
+      "runner_group_id": 0,
+      "runner_group_name": ""
+    },
+    {
+      "id": 131082872221,
+      "run_id": 43188883243,
+      "workflow_name": "CI15 phase3 WebRTC and UniFFI controlled cold experiment",
+      "head_branch": "experiment/ci15-phase3-audit-20261112",
+      "run_url": "https://api.github.com/repos/kaito-harry/actrium/actions/runs/43188883243",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOVj0iNc8AAAAehSXlnQ",
+      "head_sha": "30d7b32ca2d7734408620338d2f5a777f23035cb",
+      "url": "https://api.github.com/repos/kaito-harry/actrium/actions/jobs/131082872221",
+      "html_url": "https://github.com/kaito-harry/actrium/actions/runs/43188883243/job/131082872221",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-12T09:08:58Z",
+      "started_at": "2026-11-12T09:09:01Z",
+      "completed_at": "2026-11-12T09:19:25Z",
+      "name": "WebRTC a cold",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-12T09:09:01Z",
+          "completed_at": "2026-11-12T09:09:03Z"
+        },
+        {
+          "name": "Run actions/checkout@v5",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-12T09:09:03Z",
+          "completed_at": "2026-11-12T09:09:05Z"
+        },
+        {
+          "name": "Prepare Linux build space",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-12T09:09:05Z",
+          "completed_at": "2026-11-12T09:09:54Z"
+        },
+        {
+          "name": "Setup Rust",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-12T09:09:54Z",
+          "completed_at": "2026-11-12T09:10:06Z"
+        },
+        {
+          "name": "Install protoc",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-12T09:10:06Z",
+          "completed_at": "2026-11-12T09:10:12Z"
+        },
+        {
+          "name": "Install pinned prebuilt WebAssembly tools",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-12T09:10:12Z",
+          "completed_at": "2026-11-12T09:10:13Z"
+        },
+        {
+          "name": "Install cargo-nextest",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-12T09:10:13Z",
+          "completed_at": "2026-11-12T09:10:13Z"
+        },
+        {
+          "name": "Check (WebRTC)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-12T09:10:13Z",
+          "completed_at": "2026-11-12T09:13:04Z"
+        },
+        {
+          "name": "Clippy (WebRTC, deny warnings)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-11-12T09:13:04Z",
+          "completed_at": "2026-11-12T09:14:05Z"
+        },
+        {
+          "name": "Test (WebRTC)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-11-12T09:14:05Z",
+          "completed_at": "2026-11-12T09:19:20Z"
+        },
+        {
+          "name": "Disk usage at end",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-11-12T09:19:20Z",
+          "completed_at": "2026-11-12T09:19:20Z"
+        },
+        {
+          "name": "Record selected tests and feature graph",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-11-12T09:19:20Z",
+          "completed_at": "2026-11-12T09:19:23Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-11-12T09:19:23Z",
+          "completed_at": "2026-11-12T09:19:24Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v5",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 26,
+          "started_at": "2026-11-12T09:19:24Z",
+          "completed_at": "2026-11-12T09:19:24Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 27,
+          "started_at": "2026-11-12T09:19:24Z",
+          "completed_at": "2026-11-12T09:19:24Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/kaito-harry/actrium/check-runs/131082872221",
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "runner_id": 1000004297,
+      "runner_name": "GitHub Actions 1000004297",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 131090399520,
+      "run_id": 43188883243,
+      "workflow_name": "CI15 phase3 WebRTC and UniFFI controlled cold experiment",
+      "head_branch": "experiment/ci15-phase3-audit-20261112",
+      "run_url": "https://api.github.com/repos/kaito-harry/actrium/actions/runs/43188883243",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOVj0iNc8AAAAehZjBIA",
+      "head_sha": "30d7b32ca2d7734408620338d2f5a777f23035cb",
+      "url": "https://api.github.com/repos/kaito-harry/actrium/actions/jobs/131090399520",
+      "html_url": "https://github.com/kaito-harry/actrium/actions/runs/43188883243/job/131090399520",
+      "status": "completed",
+      "conclusion": "skipped",
+      "created_at": "2026-11-12T09:24:01Z",
+      "started_at": "2026-11-12T09:24:01Z",
+      "completed_at": "2026-11-12T09:24:00Z",
+      "name": "Swift b cold verified tool artifact",
+      "steps": [],
+      "check_run_url": "https://api.github.com/repos/kaito-harry/actrium/check-runs/131090399520",
+      "labels": [
+        "macos-latest"
+      ],
+      "runner_id": null,
+      "runner_name": null,
+      "runner_group_id": null,
+      "runner_group_name": null
+    }
+  ],
+  "coverage": {
+    "compile_unit_count": 740,
+    "fields": [
+      "package_id",
+      "target.name",
+      "target.kind",
+      "target.crate_types",
+      "features",
+      "profile"
+    ],
+    "check_a_clippy_a_clippy_b_identical": true,
+    "test_diff": {
+      "a": 419,
+      "b": 419,
+      "onlyA": [],
+      "onlyB": []
+    }
+  },
+  "producer_failure": [
+    "The job was not acquired by Runner of type hosted even after multiple attempts",
+    "Internal server error. Correlation ID: 2dcb6858-de88-44dc-975a-848ae42ca89c",
+    "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times."
+  ],
+  "retry_jobs": [
+    {
+      "id": 131092171679,
+      "run_id": 43188883243,
+      "workflow_name": "CI15 phase3 WebRTC and UniFFI controlled cold experiment",
+      "head_branch": "experiment/ci15-phase3-audit-20261112",
+      "run_url": "https://api.github.com/repos/kaito-harry/actrium/actions/runs/43188883243",
+      "run_attempt": 2,
+      "node_id": "CR_kwDOVj0iNc8AAAAehbPLnw",
+      "head_sha": "30d7b32ca2d7734408620338d2f5a777f23035cb",
+      "url": "https://api.github.com/repos/kaito-harry/actrium/actions/jobs/131092171679",
+      "html_url": "https://github.com/kaito-harry/actrium/actions/runs/43188883243/job/131092171679",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-12T09:27:35Z",
+      "started_at": "2026-11-12T09:27:41Z",
+      "completed_at": "2026-11-12T09:32:02Z",
+      "name": "UniFFI producer cold total cost",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-12T09:27:42Z",
+          "completed_at": "2026-11-12T09:27:44Z"
+        },
+        {
+          "name": "Run dtolnay/rust-toolchain@1.99.0",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-12T09:27:44Z",
+          "completed_at": "2026-11-12T09:27:53Z"
+        },
+        {
+          "name": "Compile locked UniFFI official crate",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-12T09:27:53Z",
+          "completed_at": "2026-11-12T09:31:54Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-12T09:31:54Z",
+          "completed_at": "2026-11-12T09:31:56Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-12T09:31:56Z",
+          "completed_at": "2026-11-12T09:32:00Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/kaito-harry/actrium/check-runs/131092171679",
+      "labels": [
+        "macos-latest"
+      ],
+      "runner_id": 1000004305,
+      "runner_name": "GitHub Actions 1000004305",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 131092173489,
+      "run_id": 43188883243,
+      "workflow_name": "CI15 phase3 WebRTC and UniFFI controlled cold experiment",
+      "head_branch": "experiment/ci15-phase3-audit-20261112",
+      "run_url": "https://api.github.com/repos/kaito-harry/actrium/actions/runs/43188883243",
+      "run_attempt": 2,
+      "node_id": "CR_kwDOVj0iNc8AAAAehbPSsQ",
+      "head_sha": "30d7b32ca2d7734408620338d2f5a777f23035cb",
+      "url": "https://api.github.com/repos/kaito-harry/actrium/actions/jobs/131092173489",
+      "html_url": "https://github.com/kaito-harry/actrium/actions/runs/43188883243/job/131092173489",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-12T09:27:35Z",
+      "started_at": "2026-11-12T09:09:01Z",
+      "completed_at": "2026-11-12T09:15:03Z",
+      "name": "Swift a cold source tool",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-12T09:09:01Z",
+          "completed_at": "2026-11-12T09:09:02Z"
+        },
+        {
+          "name": "Run actions/checkout@v5",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-12T09:09:02Z",
+          "completed_at": "2026-11-12T09:09:06Z"
+        },
+        {
+          "name": "Set up Rust",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-12T09:09:06Z",
+          "completed_at": "2026-11-12T09:09:12Z"
+        },
+        {
+          "name": "Install protoc",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-12T09:09:12Z",
+          "completed_at": "2026-11-12T09:09:18Z"
+        },
+        {
+          "name": "Install UniFFI bindgen",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-12T09:09:18Z",
+          "completed_at": "2026-11-12T09:11:01Z"
+        },
+        {
+          "name": "Install Swift tools and libraries",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-12T09:11:01Z",
+          "completed_at": "2026-11-12T09:11:06Z"
+        },
+        {
+          "name": "Run SwiftLint",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-12T09:11:06Z",
+          "completed_at": "2026-11-12T09:11:07Z"
+        },
+        {
+          "name": "Check actr-cabi header sync",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-12T09:11:07Z",
+          "completed_at": "2026-11-12T09:11:07Z"
+        },
+        {
+          "name": "Type-check actr-cabi Swift wrapper",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-11-12T09:11:07Z",
+          "completed_at": "2026-11-12T09:11:12Z"
+        },
+        {
+          "name": "Build local Swift XCFramework",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-11-12T09:11:12Z",
+          "completed_at": "2026-11-12T09:13:14Z"
+        },
+        {
+          "name": "Build Swift bindings package",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-11-12T09:13:14Z",
+          "completed_at": "2026-11-12T09:13:48Z"
+        },
+        {
+          "name": "Pre-build mock-loran",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-11-12T09:13:48Z",
+          "completed_at": "2026-11-12T09:14:11Z"
+        },
+        {
+          "name": "Test Swift bindings package",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-11-12T09:14:11Z",
+          "completed_at": "2026-11-12T09:14:43Z"
+        },
+        {
+          "name": "Build Swift codegen package",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-11-12T09:14:43Z",
+          "completed_at": "2026-11-12T09:14:59Z"
+        },
+        {
+          "name": "Disk usage at end",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-12T09:14:59Z",
+          "completed_at": "2026-11-12T09:14:59Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v5",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 30,
+          "started_at": "2026-11-12T09:14:59Z",
+          "completed_at": "2026-11-12T09:15:00Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 31,
+          "started_at": "2026-11-12T09:15:00Z",
+          "completed_at": "2026-11-12T09:15:01Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/kaito-harry/actrium/check-runs/131092173489",
+      "labels": [
+        "macos-latest"
+      ],
+      "runner_id": 1000004295,
+      "runner_name": "GitHub Actions 1000004295",
+      "runner_group_id": null,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 131092174472,
+      "run_id": 43188883243,
+      "workflow_name": "CI15 phase3 WebRTC and UniFFI controlled cold experiment",
+      "head_branch": "experiment/ci15-phase3-audit-20261112",
+      "run_url": "https://api.github.com/repos/kaito-harry/actrium/actions/runs/43188883243",
+      "run_attempt": 2,
+      "node_id": "CR_kwDOVj0iNc8AAAAehbPWiA",
+      "head_sha": "30d7b32ca2d7734408620338d2f5a777f23035cb",
+      "url": "https://api.github.com/repos/kaito-harry/actrium/actions/jobs/131092174472",
+      "html_url": "https://github.com/kaito-harry/actrium/actions/runs/43188883243/job/131092174472",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-12T09:27:35Z",
+      "started_at": "2026-11-12T09:09:00Z",
+      "completed_at": "2026-11-12T09:19:35Z",
+      "name": "WebRTC b cold",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-12T09:09:01Z",
+          "completed_at": "2026-11-12T09:09:03Z"
+        },
+        {
+          "name": "Run actions/checkout@v5",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-12T09:09:03Z",
+          "completed_at": "2026-11-12T09:09:05Z"
+        },
+        {
+          "name": "Prepare Linux build space",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-12T09:09:05Z",
+          "completed_at": "2026-11-12T09:10:28Z"
+        },
+        {
+          "name": "Setup Rust",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-12T09:10:28Z",
+          "completed_at": "2026-11-12T09:10:40Z"
+        },
+        {
+          "name": "Install protoc",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-12T09:10:40Z",
+          "completed_at": "2026-11-12T09:10:45Z"
+        },
+        {
+          "name": "Install pinned prebuilt WebAssembly tools",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-12T09:10:45Z",
+          "completed_at": "2026-11-12T09:10:46Z"
+        },
+        {
+          "name": "Install cargo-nextest",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-12T09:10:46Z",
+          "completed_at": "2026-11-12T09:10:46Z"
+        },
+        {
+          "name": "Clippy (WebRTC, deny warnings)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-12T09:10:46Z",
+          "completed_at": "2026-11-12T09:13:45Z"
+        },
+        {
+          "name": "Test (WebRTC)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-11-12T09:13:45Z",
+          "completed_at": "2026-11-12T09:19:29Z"
+        },
+        {
+          "name": "Disk usage at end",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-11-12T09:19:29Z",
+          "completed_at": "2026-11-12T09:19:29Z"
+        },
+        {
+          "name": "Record selected tests and feature graph",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-11-12T09:19:29Z",
+          "completed_at": "2026-11-12T09:19:32Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-11-12T09:19:32Z",
+          "completed_at": "2026-11-12T09:19:33Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v5",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-11-12T09:19:33Z",
+          "completed_at": "2026-11-12T09:19:33Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-11-12T09:19:33Z",
+          "completed_at": "2026-11-12T09:19:33Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/kaito-harry/actrium/check-runs/131092174472",
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "runner_id": 1000004294,
+      "runner_name": "GitHub Actions 1000004294",
+      "runner_group_id": null,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 131092242088,
+      "run_id": 43188883243,
+      "workflow_name": "CI15 phase3 WebRTC and UniFFI controlled cold experiment",
+      "head_branch": "experiment/ci15-phase3-audit-20261112",
+      "run_url": "https://api.github.com/repos/kaito-harry/actrium/actions/runs/43188883243",
+      "run_attempt": 2,
+      "node_id": "CR_kwDOVj0iNc8AAAAehbTeqA",
+      "head_sha": "30d7b32ca2d7734408620338d2f5a777f23035cb",
+      "url": "https://api.github.com/repos/kaito-harry/actrium/actions/jobs/131092242088",
+      "html_url": "https://github.com/kaito-harry/actrium/actions/runs/43188883243/job/131092242088",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-12T09:27:43Z",
+      "started_at": "2026-11-12T09:09:01Z",
+      "completed_at": "2026-11-12T09:19:25Z",
+      "name": "WebRTC a cold",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-12T09:09:01Z",
+          "completed_at": "2026-11-12T09:09:03Z"
+        },
+        {
+          "name": "Run actions/checkout@v5",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-12T09:09:03Z",
+          "completed_at": "2026-11-12T09:09:05Z"
+        },
+        {
+          "name": "Prepare Linux build space",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-12T09:09:05Z",
+          "completed_at": "2026-11-12T09:09:54Z"
+        },
+        {
+          "name": "Setup Rust",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-12T09:09:54Z",
+          "completed_at": "2026-11-12T09:10:06Z"
+        },
+        {
+          "name": "Install protoc",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-12T09:10:06Z",
+          "completed_at": "2026-11-12T09:10:12Z"
+        },
+        {
+          "name": "Install pinned prebuilt WebAssembly tools",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-12T09:10:12Z",
+          "completed_at": "2026-11-12T09:10:13Z"
+        },
+        {
+          "name": "Install cargo-nextest",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-12T09:10:13Z",
+          "completed_at": "2026-11-12T09:10:13Z"
+        },
+        {
+          "name": "Check (WebRTC)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-12T09:10:13Z",
+          "completed_at": "2026-11-12T09:13:04Z"
+        },
+        {
+          "name": "Clippy (WebRTC, deny warnings)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-11-12T09:13:04Z",
+          "completed_at": "2026-11-12T09:14:05Z"
+        },
+        {
+          "name": "Test (WebRTC)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-11-12T09:14:05Z",
+          "completed_at": "2026-11-12T09:19:20Z"
+        },
+        {
+          "name": "Disk usage at end",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-11-12T09:19:20Z",
+          "completed_at": "2026-11-12T09:19:20Z"
+        },
+        {
+          "name": "Record selected tests and feature graph",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-11-12T09:19:20Z",
+          "completed_at": "2026-11-12T09:19:23Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-11-12T09:19:23Z",
+          "completed_at": "2026-11-12T09:19:24Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v5",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 26,
+          "started_at": "2026-11-12T09:19:24Z",
+          "completed_at": "2026-11-12T09:19:24Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 27,
+          "started_at": "2026-11-12T09:19:24Z",
+          "completed_at": "2026-11-12T09:19:24Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/kaito-harry/actrium/check-runs/131092242088",
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "runner_id": 1000004297,
+      "runner_name": "GitHub Actions 1000004297",
+      "runner_group_id": null,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 131094397397,
+      "run_id": 43188883243,
+      "workflow_name": "CI15 phase3 WebRTC and UniFFI controlled cold experiment",
+      "head_branch": "experiment/ci15-phase3-audit-20261112",
+      "run_url": "https://api.github.com/repos/kaito-harry/actrium/actions/runs/43188883243",
+      "run_attempt": 2,
+      "node_id": "CR_kwDOVj0iNc8AAAAehdXB1Q",
+      "head_sha": "30d7b32ca2d7734408620338d2f5a777f23035cb",
+      "url": "https://api.github.com/repos/kaito-harry/actrium/actions/jobs/131094397397",
+      "html_url": "https://github.com/kaito-harry/actrium/actions/runs/43188883243/job/131094397397",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-12T09:32:02Z",
+      "started_at": "2026-11-12T09:33:21Z",
+      "completed_at": "2026-11-12T09:44:00Z",
+      "name": "Swift b cold verified tool artifact",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-12T09:33:21Z",
+          "completed_at": "2026-11-12T09:33:25Z"
+        },
+        {
+          "name": "Run actions/checkout@v5",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-12T09:33:25Z",
+          "completed_at": "2026-11-12T09:34:05Z"
+        },
+        {
+          "name": "Set up Rust",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-12T09:34:05Z",
+          "completed_at": "2026-11-12T09:34:15Z"
+        },
+        {
+          "name": "Install protoc",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-12T09:34:15Z",
+          "completed_at": "2026-11-12T09:34:34Z"
+        },
+        {
+          "name": "Run actions/download-artifact@v4",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-12T09:34:34Z",
+          "completed_at": "2026-11-12T09:34:35Z"
+        },
+        {
+          "name": "Verify tool manifest and executable",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-12T09:34:35Z",
+          "completed_at": "2026-11-12T09:34:35Z"
+        },
+        {
+          "name": "Install Swift tools and libraries",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-12T09:34:35Z",
+          "completed_at": "2026-11-12T09:34:44Z"
+        },
+        {
+          "name": "Run SwiftLint",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-12T09:34:44Z",
+          "completed_at": "2026-11-12T09:34:48Z"
+        },
+        {
+          "name": "Check actr-cabi header sync",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-11-12T09:34:48Z",
+          "completed_at": "2026-11-12T09:34:48Z"
+        },
+        {
+          "name": "Type-check actr-cabi Swift wrapper",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-11-12T09:34:48Z",
+          "completed_at": "2026-11-12T09:34:56Z"
+        },
+        {
+          "name": "Build local Swift XCFramework",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-11-12T09:34:56Z",
+          "completed_at": "2026-11-12T09:40:16Z"
+        },
+        {
+          "name": "Build Swift bindings package",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-11-12T09:40:16Z",
+          "completed_at": "2026-11-12T09:41:16Z"
+        },
+        {
+          "name": "Pre-build mock-loran",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-11-12T09:41:16Z",
+          "completed_at": "2026-11-12T09:42:13Z"
+        },
+        {
+          "name": "Test Swift bindings package",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-11-12T09:42:13Z",
+          "completed_at": "2026-11-12T09:43:13Z"
+        },
+        {
+          "name": "Build Swift codegen package",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-12T09:43:13Z",
+          "completed_at": "2026-11-12T09:43:54Z"
+        },
+        {
+          "name": "Disk usage at end",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-11-12T09:43:54Z",
+          "completed_at": "2026-11-12T09:43:54Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v5",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 32,
+          "started_at": "2026-11-12T09:43:54Z",
+          "completed_at": "2026-11-12T09:43:55Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 33,
+          "started_at": "2026-11-12T09:43:55Z",
+          "completed_at": "2026-11-12T09:43:58Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/kaito-harry/actrium/check-runs/131094397397",
+      "labels": [
+        "macos-latest"
+      ],
+      "runner_id": 1000004306,
+      "runner_name": "GitHub Actions 1000004306",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    }
+  ],
+  "swift": {
+    "tests_a": 35,
+    "tests_b": 35,
+    "suites": 3,
+    "tool_a_seconds": 103,
+    "producer_job_seconds": 261,
+    "producer_compile_step_seconds": 241,
+    "artifact_bytes": 2947376,
+    "consumer_download_verify_seconds": 1,
+    "consumer_job_seconds": 639,
+    "baseline_job_seconds": 362,
+    "cold_chain_from_producer_start_seconds": 979,
+    "original_workflow_creation_to_finish_seconds": 2103,
+    "limitations": [
+      "One pair only; A/B different hosted runners and different wall-clock periods; large unrelated compilation variance",
+      "Initial producer platform capacity acquisition failed after 15m02, then one producer-only retry also ran dependent consumer",
+      "Already-ready tool artifact latency verified, not end-to-end Swift performance gain",
+      "No change to MSRV promise or upstream/main"
+    ]
+  },
+  "webrtc": {
+    "a_job_seconds": 624,
+    "b_job_seconds": 635,
+    "a_check_clippy_test_seconds": 547,
+    "b_clippy_test_seconds": 523
+  }
+}

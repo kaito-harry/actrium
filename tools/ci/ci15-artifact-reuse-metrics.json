@@ -1,0 +1,925 @@
+{
+  "scope": "Artifact feasibility only; E2E caches disabled; corrected run Web cache warm",
+  "run": {
+    "id": 43191443512,
+    "sha": "0710167e96af85ec8cdcf473c387fdb6eae5f188",
+    "url": "https://github.com/kaito-harry/actrium/actions/runs/43191443512",
+    "created_at": "2026-11-12T09:26:12Z",
+    "updated_at": "2026-11-12T09:43:12Z",
+    "conclusion": "success",
+    "elapsed_seconds": 1020
+  },
+  "jobs": [
+    {
+      "id": 131091483289,
+      "name": "Prepare CLI Web Runtime",
+      "started_at": "2026-11-12T09:26:15Z",
+      "completed_at": "2026-11-12T09:26:27Z",
+      "conclusion": "success",
+      "duration_seconds": 12,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-12T09:26:16Z",
+          "completed_at": "2026-11-12T09:26:18Z"
+        },
+        {
+          "name": "Run actions/checkout@v5",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-12T09:26:18Z",
+          "completed_at": "2026-11-12T09:26:20Z"
+        },
+        {
+          "name": "Cache CLI web runtime assets",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-12T09:26:20Z",
+          "completed_at": "2026-11-12T09:26:22Z"
+        },
+        {
+          "name": "Check cached Web runtime",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-12T09:26:22Z",
+          "completed_at": "2026-11-12T09:26:22Z"
+        },
+        {
+          "name": "Prepare Linux build space",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 5,
+          "started_at": "2026-11-12T09:26:22Z",
+          "completed_at": "2026-11-12T09:26:22Z"
+        },
+        {
+          "name": "Setup Rust",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-11-12T09:26:22Z",
+          "completed_at": "2026-11-12T09:26:22Z"
+        },
+        {
+          "name": "Install protoc",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-11-12T09:26:22Z",
+          "completed_at": "2026-11-12T09:26:22Z"
+        },
+        {
+          "name": "Run sccache-cache",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8,
+          "started_at": "2026-11-12T09:26:22Z",
+          "completed_at": "2026-11-12T09:26:22Z"
+        },
+        {
+          "name": "Cache cold web-build dependencies",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-11-12T09:26:22Z",
+          "completed_at": "2026-11-12T09:26:22Z"
+        },
+        {
+          "name": "Install pinned prebuilt WebAssembly tools",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-11-12T09:26:22Z",
+          "completed_at": "2026-11-12T09:26:22Z"
+        },
+        {
+          "name": "Build CLI web runtime assets",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-11-12T09:26:22Z",
+          "completed_at": "2026-11-12T09:26:22Z"
+        },
+        {
+          "name": "Sync cached CLI web runtime assets",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-11-12T09:26:22Z",
+          "completed_at": "2026-11-12T09:26:22Z"
+        },
+        {
+          "name": "Verify Web runtime before uploading",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-11-12T09:26:22Z",
+          "completed_at": "2026-11-12T09:26:22Z"
+        },
+        {
+          "name": "Upload CLI web runtime assets",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-11-12T09:26:22Z",
+          "completed_at": "2026-11-12T09:26:23Z"
+        },
+        {
+          "name": "Upload sw-host runtime assets",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-12T09:26:23Z",
+          "completed_at": "2026-11-12T09:26:24Z"
+        },
+        {
+          "name": "Disk usage at end",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-11-12T09:26:24Z",
+          "completed_at": "2026-11-12T09:26:24Z"
+        },
+        {
+          "name": "Post Cache CLI web runtime assets",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 31,
+          "started_at": "2026-11-12T09:26:24Z",
+          "completed_at": "2026-11-12T09:26:24Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v5",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 32,
+          "started_at": "2026-11-12T09:26:24Z",
+          "completed_at": "2026-11-12T09:26:25Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 33,
+          "started_at": "2026-11-12T09:26:25Z",
+          "completed_at": "2026-11-12T09:26:25Z"
+        }
+      ]
+    },
+    {
+      "id": 131091614356,
+      "name": "Build same-SHA E2E fixtures",
+      "started_at": "2026-11-12T09:26:30Z",
+      "completed_at": "2026-11-12T09:34:24Z",
+      "conclusion": "success",
+      "duration_seconds": 474,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-12T09:26:31Z",
+          "completed_at": "2026-11-12T09:26:33Z"
+        },
+        {
+          "name": "Run actions/checkout@v5",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-12T09:26:33Z",
+          "completed_at": "2026-11-12T09:26:36Z"
+        },
+        {
+          "name": "Prepare Linux build space",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-12T09:26:36Z",
+          "completed_at": "2026-11-12T09:27:28Z"
+        },
+        {
+          "name": "Setup Rust",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-12T09:27:28Z",
+          "completed_at": "2026-11-12T09:27:38Z"
+        },
+        {
+          "name": "Install Linux e2e dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-12T09:27:38Z",
+          "completed_at": "2026-11-12T09:27:50Z"
+        },
+        {
+          "name": "Install protoc",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-12T09:27:50Z",
+          "completed_at": "2026-11-12T09:27:56Z"
+        },
+        {
+          "name": "Install pinned prebuilt WebAssembly tools",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-12T09:27:56Z",
+          "completed_at": "2026-11-12T09:27:56Z"
+        },
+        {
+          "name": "Download CLI web runtime assets",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-12T09:27:56Z",
+          "completed_at": "2026-11-12T09:27:57Z"
+        },
+        {
+          "name": "Sync CLI source assets",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-11-12T09:27:57Z",
+          "completed_at": "2026-11-12T09:27:57Z"
+        },
+        {
+          "name": "Build original default-feature CLI and Loran fixture",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-11-12T09:27:57Z",
+          "completed_at": "2026-11-12T09:34:17Z"
+        },
+        {
+          "name": "Upload executable fixture archive",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-11-12T09:34:17Z",
+          "completed_at": "2026-11-12T09:34:22Z"
+        },
+        {
+          "name": "Disk usage at end",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-11-12T09:34:22Z",
+          "completed_at": "2026-11-12T09:34:22Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v5",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-11-12T09:34:22Z",
+          "completed_at": "2026-11-12T09:34:22Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-11-12T09:34:22Z",
+          "completed_at": "2026-11-12T09:34:22Z"
+        }
+      ]
+    },
+    {
+      "id": 131095493936,
+      "name": "Consume same-SHA fixtures: four sequential scenarios",
+      "started_at": "2026-11-12T09:34:30Z",
+      "completed_at": "2026-11-12T09:43:11Z",
+      "conclusion": "success",
+      "duration_seconds": 521,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-12T09:34:31Z",
+          "completed_at": "2026-11-12T09:34:32Z"
+        },
+        {
+          "name": "Run actions/checkout@v5",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-12T09:34:32Z",
+          "completed_at": "2026-11-12T09:34:35Z"
+        },
+        {
+          "name": "Prepare Linux build space",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-12T09:34:35Z",
+          "completed_at": "2026-11-12T09:36:24Z"
+        },
+        {
+          "name": "Setup Rust",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-12T09:36:24Z",
+          "completed_at": "2026-11-12T09:36:32Z"
+        },
+        {
+          "name": "Install Linux e2e dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-12T09:36:32Z",
+          "completed_at": "2026-11-12T09:36:42Z"
+        },
+        {
+          "name": "Install protoc",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-12T09:36:42Z",
+          "completed_at": "2026-11-12T09:36:49Z"
+        },
+        {
+          "name": "Install pinned prebuilt WebAssembly tools",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-12T09:36:49Z",
+          "completed_at": "2026-11-12T09:36:49Z"
+        },
+        {
+          "name": "Download CLI web runtime assets",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-12T09:36:49Z",
+          "completed_at": "2026-11-12T09:36:50Z"
+        },
+        {
+          "name": "Sync CLI source assets",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-11-12T09:36:50Z",
+          "completed_at": "2026-11-12T09:36:50Z"
+        },
+        {
+          "name": "Download same-SHA executable fixture archive",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-11-12T09:36:50Z",
+          "completed_at": "2026-11-12T09:36:55Z"
+        },
+        {
+          "name": "Verify artifact provenance and executable permissions",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-11-12T09:36:55Z",
+          "completed_at": "2026-11-12T09:37:00Z"
+        },
+        {
+          "name": "Verify Publisher signing-key isolation",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-11-12T09:37:00Z",
+          "completed_at": "2026-11-12T09:37:00Z"
+        },
+        {
+          "name": "Verify HTTPS transport and certificate rejection",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-11-12T09:37:00Z",
+          "completed_at": "2026-11-12T09:37:01Z"
+        },
+        {
+          "name": "Run signed package runtime echo e2e",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-11-12T09:37:01Z",
+          "completed_at": "2026-11-12T09:40:18Z"
+        },
+        {
+          "name": "Run provider and external domain Realms",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-12T09:40:18Z",
+          "completed_at": "2026-11-12T09:43:02Z"
+        },
+        {
+          "name": "Verify retired and revoked Publisher signing keys",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-11-12T09:43:02Z",
+          "completed_at": "2026-11-12T09:43:09Z"
+        },
+        {
+          "name": "Disk usage at end",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-11-12T09:43:09Z",
+          "completed_at": "2026-11-12T09:43:09Z"
+        },
+        {
+          "name": "Post Run actions/checkout@v5",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 34,
+          "started_at": "2026-11-12T09:43:09Z",
+          "completed_at": "2026-11-12T09:43:09Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 35,
+          "started_at": "2026-11-12T09:43:09Z",
+          "completed_at": "2026-11-12T09:43:09Z"
+        }
+      ]
+    }
+  ],
+  "initial_harness_failure": {
+    "id": 43188976534,
+    "reason": "Unsupported actr --version probe; artifact verified but scenarios skipped",
+    "jobs": [
+      {
+        "id": 131083185246,
+        "name": "Prepare CLI Web Runtime",
+        "started_at": "2026-11-12T09:09:39Z",
+        "completed_at": "2026-11-12T09:13:54Z",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1,
+            "started_at": "2026-11-12T09:09:39Z",
+            "completed_at": "2026-11-12T09:09:42Z"
+          },
+          {
+            "name": "Run actions/checkout@v5",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2,
+            "started_at": "2026-11-12T09:09:42Z",
+            "completed_at": "2026-11-12T09:09:44Z"
+          },
+          {
+            "name": "Cache CLI web runtime assets",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3,
+            "started_at": "2026-11-12T09:09:44Z",
+            "completed_at": "2026-11-12T09:09:45Z"
+          },
+          {
+            "name": "Check cached Web runtime",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4,
+            "started_at": "2026-11-12T09:09:45Z",
+            "completed_at": "2026-11-12T09:09:45Z"
+          },
+          {
+            "name": "Prepare Linux build space",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5,
+            "started_at": "2026-11-12T09:09:45Z",
+            "completed_at": "2026-11-12T09:11:52Z"
+          },
+          {
+            "name": "Setup Rust",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6,
+            "started_at": "2026-11-12T09:11:52Z",
+            "completed_at": "2026-11-12T09:12:01Z"
+          },
+          {
+            "name": "Install protoc",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7,
+            "started_at": "2026-11-12T09:12:01Z",
+            "completed_at": "2026-11-12T09:12:07Z"
+          },
+          {
+            "name": "Run sccache-cache",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 8,
+            "started_at": "2026-11-12T09:12:07Z",
+            "completed_at": "2026-11-12T09:12:07Z"
+          },
+          {
+            "name": "Cache cold web-build dependencies",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9,
+            "started_at": "2026-11-12T09:12:07Z",
+            "completed_at": "2026-11-12T09:12:08Z"
+          },
+          {
+            "name": "Install pinned prebuilt WebAssembly tools",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 10,
+            "started_at": "2026-11-12T09:12:08Z",
+            "completed_at": "2026-11-12T09:12:08Z"
+          },
+          {
+            "name": "Build CLI web runtime assets",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 11,
+            "started_at": "2026-11-12T09:12:08Z",
+            "completed_at": "2026-11-12T09:13:46Z"
+          },
+          {
+            "name": "Sync cached CLI web runtime assets",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 12,
+            "started_at": "2026-11-12T09:13:46Z",
+            "completed_at": "2026-11-12T09:13:46Z"
+          },
+          {
+            "name": "Verify Web runtime before uploading",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 13,
+            "started_at": "2026-11-12T09:13:46Z",
+            "completed_at": "2026-11-12T09:13:46Z"
+          },
+          {
+            "name": "Upload CLI web runtime assets",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 14,
+            "started_at": "2026-11-12T09:13:46Z",
+            "completed_at": "2026-11-12T09:13:47Z"
+          },
+          {
+            "name": "Upload sw-host runtime assets",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 15,
+            "started_at": "2026-11-12T09:13:47Z",
+            "completed_at": "2026-11-12T09:13:48Z"
+          },
+          {
+            "name": "Disk usage at end",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 16,
+            "started_at": "2026-11-12T09:13:48Z",
+            "completed_at": "2026-11-12T09:13:48Z"
+          },
+          {
+            "name": "Post Cache cold web-build dependencies",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 29,
+            "started_at": "2026-11-12T09:13:48Z",
+            "completed_at": "2026-11-12T09:13:52Z"
+          },
+          {
+            "name": "Post Run sccache-cache",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 30,
+            "started_at": "2026-11-12T09:13:52Z",
+            "completed_at": "2026-11-12T09:13:52Z"
+          },
+          {
+            "name": "Post Cache CLI web runtime assets",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 31,
+            "started_at": "2026-11-12T09:13:52Z",
+            "completed_at": "2026-11-12T09:13:53Z"
+          },
+          {
+            "name": "Post Run actions/checkout@v5",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 32,
+            "started_at": "2026-11-12T09:13:53Z",
+            "completed_at": "2026-11-12T09:13:53Z"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 33,
+            "started_at": "2026-11-12T09:13:53Z",
+            "completed_at": "2026-11-12T09:13:53Z"
+          }
+        ]
+      },
+      {
+        "id": 131085330070,
+        "name": "Build same-SHA E2E fixtures",
+        "started_at": "2026-11-12T09:13:57Z",
+        "completed_at": "2026-11-12T09:21:08Z",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1,
+            "started_at": "2026-11-12T09:13:58Z",
+            "completed_at": "2026-11-12T09:13:59Z"
+          },
+          {
+            "name": "Run actions/checkout@v5",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2,
+            "started_at": "2026-11-12T09:13:59Z",
+            "completed_at": "2026-11-12T09:14:02Z"
+          },
+          {
+            "name": "Prepare Linux build space",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3,
+            "started_at": "2026-11-12T09:14:02Z",
+            "completed_at": "2026-11-12T09:16:11Z"
+          },
+          {
+            "name": "Setup Rust",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4,
+            "started_at": "2026-11-12T09:16:11Z",
+            "completed_at": "2026-11-12T09:16:20Z"
+          },
+          {
+            "name": "Install Linux e2e dependencies",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5,
+            "started_at": "2026-11-12T09:16:20Z",
+            "completed_at": "2026-11-12T09:16:29Z"
+          },
+          {
+            "name": "Install protoc",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6,
+            "started_at": "2026-11-12T09:16:29Z",
+            "completed_at": "2026-11-12T09:16:35Z"
+          },
+          {
+            "name": "Install pinned prebuilt WebAssembly tools",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7,
+            "started_at": "2026-11-12T09:16:35Z",
+            "completed_at": "2026-11-12T09:16:35Z"
+          },
+          {
+            "name": "Download CLI web runtime assets",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 8,
+            "started_at": "2026-11-12T09:16:35Z",
+            "completed_at": "2026-11-12T09:16:36Z"
+          },
+          {
+            "name": "Sync CLI source assets",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9,
+            "started_at": "2026-11-12T09:16:36Z",
+            "completed_at": "2026-11-12T09:16:36Z"
+          },
+          {
+            "name": "Build original default-feature CLI and Loran fixture",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 10,
+            "started_at": "2026-11-12T09:16:36Z",
+            "completed_at": "2026-11-12T09:21:03Z"
+          },
+          {
+            "name": "Upload executable fixture archive",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 11,
+            "started_at": "2026-11-12T09:21:03Z",
+            "completed_at": "2026-11-12T09:21:06Z"
+          },
+          {
+            "name": "Disk usage at end",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 12,
+            "started_at": "2026-11-12T09:21:06Z",
+            "completed_at": "2026-11-12T09:21:06Z"
+          },
+          {
+            "name": "Post Run actions/checkout@v5",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 24,
+            "started_at": "2026-11-12T09:21:06Z",
+            "completed_at": "2026-11-12T09:21:06Z"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 25,
+            "started_at": "2026-11-12T09:21:06Z",
+            "completed_at": "2026-11-12T09:21:06Z"
+          }
+        ]
+      },
+      {
+        "id": 131088942160,
+        "name": "Consume same-SHA fixtures: four sequential scenarios",
+        "started_at": "2026-11-12T09:21:11Z",
+        "completed_at": "2026-11-12T09:22:51Z",
+        "conclusion": "failure",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1,
+            "started_at": "2026-11-12T09:21:12Z",
+            "completed_at": "2026-11-12T09:21:13Z"
+          },
+          {
+            "name": "Run actions/checkout@v5",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2,
+            "started_at": "2026-11-12T09:21:13Z",
+            "completed_at": "2026-11-12T09:21:16Z"
+          },
+          {
+            "name": "Prepare Linux build space",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3,
+            "started_at": "2026-11-12T09:21:16Z",
+            "completed_at": "2026-11-12T09:22:12Z"
+          },
+          {
+            "name": "Setup Rust",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4,
+            "started_at": "2026-11-12T09:22:12Z",
+            "completed_at": "2026-11-12T09:22:22Z"
+          },
+          {
+            "name": "Install Linux e2e dependencies",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5,
+            "started_at": "2026-11-12T09:22:22Z",
+            "completed_at": "2026-11-12T09:22:34Z"
+          },
+          {
+            "name": "Install protoc",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6,
+            "started_at": "2026-11-12T09:22:34Z",
+            "completed_at": "2026-11-12T09:22:39Z"
+          },
+          {
+            "name": "Install pinned prebuilt WebAssembly tools",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7,
+            "started_at": "2026-11-12T09:22:39Z",
+            "completed_at": "2026-11-12T09:22:39Z"
+          },
+          {
+            "name": "Download CLI web runtime assets",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 8,
+            "started_at": "2026-11-12T09:22:39Z",
+            "completed_at": "2026-11-12T09:22:40Z"
+          },
+          {
+            "name": "Sync CLI source assets",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9,
+            "started_at": "2026-11-12T09:22:40Z",
+            "completed_at": "2026-11-12T09:22:40Z"
+          },
+          {
+            "name": "Download same-SHA executable fixture archive",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 10,
+            "started_at": "2026-11-12T09:22:40Z",
+            "completed_at": "2026-11-12T09:22:42Z"
+          },
+          {
+            "name": "Verify artifact provenance and executable permissions",
+            "status": "completed",
+            "conclusion": "failure",
+            "number": 11,
+            "started_at": "2026-11-12T09:22:42Z",
+            "completed_at": "2026-11-12T09:22:49Z"
+          },
+          {
+            "name": "Verify Publisher signing-key isolation",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 12,
+            "started_at": "2026-11-12T09:22:49Z",
+            "completed_at": "2026-11-12T09:22:49Z"
+          },
+          {
+            "name": "Verify HTTPS transport and certificate rejection",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 13,
+            "started_at": "2026-11-12T09:22:49Z",
+            "completed_at": "2026-11-12T09:22:49Z"
+          },
+          {
+            "name": "Run signed package runtime echo e2e",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 14,
+            "started_at": "2026-11-12T09:22:49Z",
+            "completed_at": "2026-11-12T09:22:49Z"
+          },
+          {
+            "name": "Run provider and external domain Realms",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 15,
+            "started_at": "2026-11-12T09:22:49Z",
+            "completed_at": "2026-11-12T09:22:49Z"
+          },
+          {
+            "name": "Verify retired and revoked Publisher signing keys",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 16,
+            "started_at": "2026-11-12T09:22:49Z",
+            "completed_at": "2026-11-12T09:22:49Z"
+          },
+          {
+            "name": "Disk usage at end",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 17,
+            "started_at": "2026-11-12T09:22:49Z",
+            "completed_at": "2026-11-12T09:22:49Z"
+          },
+          {
+            "name": "Post Run actions/checkout@v5",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 34,
+            "started_at": "2026-11-12T09:22:49Z",
+            "completed_at": "2026-11-12T09:22:49Z"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 35,
+            "started_at": "2026-11-12T09:22:49Z",
+            "completed_at": "2026-11-12T09:22:49Z"
+          }
+        ]
+      }
+    ]
+  }
+}
