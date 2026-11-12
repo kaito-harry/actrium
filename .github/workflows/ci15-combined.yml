@@ -281,6 +281,26 @@ jobs:
       uses: ./.github/actions/ci15-web-space
       with:
         minimum-free-gib: '64'
+    - name: Select local E2E compiler cache
+      if: contains(github.ref_name, 'ci15-combined-candidate-')
+      run: |
+        echo 'SCCACHE_GHA_VERSION=' >> "$GITHUB_ENV"
+        echo 'SCCACHE_GHA_ENABLED=false' >> "$GITHUB_ENV"
+        echo 'SCCACHE_DIR=/tmp/ci12-e2e-sccache' >> "$GITHUB_ENV"
+        echo 'SCCACHE_CACHE_SIZE=3G' >> "$GITHUB_ENV"
+        echo 'RUSTC_WRAPPER=sccache' >> "$GITHUB_ENV"
+    - name: Restore local E2E compiler results
+      id: local-e2e-cache
+      if: contains(github.ref_name, 'ci15-combined-candidate-')
+      uses: actions/cache/restore@v4
+      with:
+        path: /tmp/ci12-e2e-sccache
+        key: ${{ env.CI15_CACHE }}-e2e-sccache-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock', '**/Cargo.toml') }}
+    - name: Install E2E compiler cache
+      if: contains(github.ref_name, 'ci15-combined-candidate-')
+      uses: mozilla-actions/sccache-action@v0.0.9
+      with:
+        version: v0.18.0
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@1.99.1
       with:
@@ -358,6 +378,17 @@ jobs:
         CI15_CACHE_REPORT: '[{"step": "ci15-cache-7", "action": "Swatinem/rust-cache@v2", "hit": "${{ steps.ci15-cache-7.outputs.cache-hit
           }}", "outcome": "${{ steps.ci15-cache-7.outcome }}"}]'
       run: echo "$CI15_CACHE_REPORT"; echo "$CI15_CACHE_REPORT" >> "$GITHUB_STEP_SUMMARY"
+    - name: Record and stop E2E compiler cache
+      if: always() && contains(github.ref_name, 'ci15-combined-candidate-')
+      run: |
+        sccache --show-stats || true
+        sccache --stop-server || true
+    - name: Save local E2E compiler results
+      if: success() && matrix.scenario == 'echo' && steps.local-e2e-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: /tmp/ci12-e2e-sccache
+        key: ${{ steps.local-e2e-cache.outputs.cache-primary-key }}
   audit:
     name: Dependency Audit
     needs: determine
