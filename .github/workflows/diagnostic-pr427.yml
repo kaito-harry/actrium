@@ -14,7 +14,6 @@ jobs:
       matrix:
         revision:
           - db0b40ea66d4878d3ffb4f870ac7eea68c24b6a8
-          - 90786d795f41b6f7964a5c3948057abd624ad689
     env:
       CARGO_PROFILE_TEST_DEBUG: "0"
       CARGO_INCREMENTAL: "0"
@@ -48,6 +47,12 @@ jobs:
               lambda m: m.group(1) + '.unwrap_or_else(|e| panic!("cycle={cycle} peer_index={i} prior={prior:?}: {e}"));', block)
           assert count == 1, count
           p.write_text(s[:start] + block + s[end:])
+          q = Path("crates/actr-hyper/src/wire/webrtc/rtc/peer/reducer.rs")
+          reducer = q.read_text()
+          anchor = "LaneEvent::Closed { generation, lane } => {"
+          assert reducer.count(anchor) == 1
+          reducer = reducer.replace(anchor, anchor + '\n            eprintln!("DIAG LaneClosed peer={} role={:?} phase={:?} event_gen={} active={:?} pending={:?} lane={:?} rpc_open={} pc_connected={} recovering={} negotiated={}", state.peer_id.to_string_repr(), state.role, state.phase, generation, state.active_generation, state.pending_generation, lane, state.rpc_reliable_open, state.pc_connected, state.recovery_inflight, state.recovery_negotiated);')
+          q.write_text(reducer)
           PY
           git diff --check
           git diff -- crates/actr-hyper/tests/support/connection_governance_production.rs
@@ -81,7 +86,7 @@ jobs:
         run: |
           binary=$(cat test-binary.txt)
           export binary
-          seq 1 40 | xargs -P 4 -I '{}' bash -c '
+          seq 1 80 | xargs -P 4 -I '{}' bash -c '
             n="$1"
             rc=0
             timeout 90s "$binary" --exact connection_governance_production::production_answerer_repeated_soft_hard_cycles_do_not_accumulate_lanes --nocapture > "diagnostics/parallel-$n.log" 2>&1 || rc=$?
