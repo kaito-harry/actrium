@@ -3,6 +3,7 @@ permissions:
   contents: read
 jobs:
   script-check:
+    if: ${{ !inputs.native_only }}
     name: Kotlin Android Script Check
     runs-on: ubuntu-24.04
     steps:
@@ -12,8 +13,17 @@ jobs:
     - name: Validate Android build script
       run: scripts/actr/tests/kotlin-android-build-script.sh
   native-build:
-    name: Kotlin Android Native Build
+    if: ${{ !inputs.skip_native }}
+    name: Kotlin Android Native Build (${{ matrix.abi }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-linux-android
+            abi: arm64-v8a
+          - target: x86_64-linux-android
+            abi: x86_64
     steps:
     - uses: actions/checkout@v5
     - name: Setup Rust
@@ -29,19 +39,21 @@ jobs:
       with:
         repo-token: ${{ github.token }}
         version: ${{ vars.PROTOC_VERSION || '29.3' }}
-    - name: Build both Android ABIs from source
+    - name: Build Android ABI from source
       env:
+        ACTR_ANDROID_TARGETS: ${{ matrix.target }}
         ACTR_BUILD_HOST_LIBRARY: 'false'
         ACTR_GENERATE_KOTLIN_BINDINGS: 'false'
         ACTR_COPY_DEMO_JNILIBS: 'false'
       run: bash packages/actr-kotlin/build-android.sh
     - name: Verify bundled Opus linkage
-      run: "for abi in arm64-v8a x86_64; do\n  directory=\"packages/actr-kotlin/actr-kotlin/src/main/jniLibs/$abi\"\n  dynamic=$(readelf\
+      run: "for abi in ${{ matrix.abi }}; do\n  directory=\"packages/actr-kotlin/actr-kotlin/src/main/jniLibs/$abi\"\n  dynamic=$(readelf\
         \ --dynamic \"$directory/libactr.so\")\n  symbols=$(readelf --dyn-syms --wide \"$directory/libactr.so\")\n  if [[\
         \ \"$dynamic\" == *libopus.so* ]] ||\n     awk '$7 == \"UND\" && $8 ~ /^opus_/ { found = 1 } END { exit !found }'\
         \ <<< \"$symbols\"; then\n    echo \"error: $abi still requires external Opus symbols\" >&2\n    exit 1\n  fi\n  test\
         \ ! -e \"$directory/libopus.so\"\ndone\n"
   test:
+    if: ${{ !inputs.native_only }}
     name: Kotlin Binding Test
     runs-on: ubuntu-24.04
     steps:
@@ -94,6 +106,7 @@ jobs:
           }}", "outcome": "${{ steps.ci15-cache-2.outcome }}"}]'
       run: echo "$CI15_CACHE_REPORT"; echo "$CI15_CACHE_REPORT" >> "$GITHUB_STEP_SUMMARY"
   gen-test:
+    if: ${{ !inputs.native_only }}
     name: Kotlin Codegen Test
     runs-on: ubuntu-24.04
     steps:
@@ -210,6 +223,14 @@ jobs:
 'on':
   workflow_call:
     inputs:
+      native_only:
+        type: boolean
+        required: false
+        default: false
+      skip_native:
+        type: boolean
+        required: false
+        default: false
       cli_web_runtime_artifact:
         description: Generated CLI runtime artifact from the calling CI Gate run
         type: string

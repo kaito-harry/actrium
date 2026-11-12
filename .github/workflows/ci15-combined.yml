@@ -1166,6 +1166,14 @@ jobs:
           }}", "outcome": "${{ steps.ci15-cache-2.outcome }}"}, {"step": "cache-uniffi", "action": "actions/cache@v4", "hit":
           "${{ steps.cache-uniffi.outputs.cache-hit }}", "outcome": "${{ steps.cache-uniffi.outcome }}"}]'
       run: echo "$CI15_CACHE_REPORT"; echo "$CI15_CACHE_REPORT" >> "$GITHUB_STEP_SUMMARY"
+  kotlin_native:
+    name: Kotlin Android
+    needs: determine
+    if: needs.determine.outputs.kotlin_binding == 'true'
+    uses: ./.github/workflows/ci15-combined-kotlin.yml
+    with:
+      native_only: true
+      experiment_namespace: ${{ github.ref_name }}
   kotlin:
     name: Kotlin
     needs:
@@ -1175,6 +1183,7 @@ jobs:
     uses: ./.github/workflows/ci15-combined-kotlin.yml
     with:
       cli_web_runtime_artifact: cli-web-runtime
+      skip_native: true
       experiment_namespace: ${{ github.ref_name }}
   web:
     name: Web
@@ -1438,6 +1447,7 @@ jobs:
     - python_workload
     - swift
     - kotlin
+    - kotlin_native
     - csharp
     - web
     - c_go_workloads
@@ -1467,6 +1477,10 @@ jobs:
       WEBRTC_RESULT: ${{ needs.webrtc.result }}
       CJK_RESULT: ${{ needs.cjk.result }}
     steps:
+    - name: Validate Kotlin Android native builds
+      env:
+        KOTLIN_NATIVE_RESULT: ${{ needs.kotlin_native.result }}
+      run: test "$KOTLIN_NATIVE_RESULT" = success
     - name: Summarize gate
       run: "python3 - <<'PY'\nimport json\nimport os\nimport sys\n\nresults = {\n    \"identity\": os.environ[\"IDENTITY_RESULT\"\
         ],\n    \"audit\": os.environ[\"AUDIT_RESULT\"],\n    \"rust\": os.environ[\"RUST_RESULT\"],\n    \"typescript\":\
@@ -1506,6 +1520,7 @@ jobs:
     - python_workload
     - swift
     - kotlin
+    - kotlin_native
     - web
     - c_go_workloads
     - webrtc
