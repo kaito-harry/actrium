@@ -1,0 +1,98 @@
+name: PR427 recovery diagnosis
+on:
+  push:
+    branches: [diagnostic/pr427-recovery-20261112]
+    paths: [.github/workflows/diagnostic-pr427.yml]
+permissions:
+  contents: read
+jobs:
+  reproduce:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        revision:
+          - db0b40ea66d4878d3ffb4f870ac7eea68c24b6a8
+          - 90786d795f41b6f7964a5c3948057abd624ad689
+    env:
+      CARGO_PROFILE_TEST_DEBUG: "0"
+      CARGO_INCREMENTAL: "0"
+      RUST_BACKTRACE: "1"
+      RUST_LOG: "warn,actr_hyper::wire::webrtc::rtc::peer=debug"
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ matrix.revision }}
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler libopus-dev libasound2-dev pkg-config clang cmake
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: pr427-diagnosis
+      - name: Preserve timeout evidence
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("crates/actr-hyper/tests/support/connection_governance_production.rs")
+          s = p.read_text()
+          old = """            for (i, prior) in previous.iter().enumerate() {
+                          pair.rtc[i]
+                              .wait_state(&pair.nodes[1 - i].actor_id(), WAIT, |s| {
+                                  s.sendable && s.pc_generation > prior.pc_generation
+                              })
+                              .await
+                              .unwrap();
+                      }"""
+          new = """            for (i, prior) in previous.iter().enumerate() {
+                          pair.rtc[i]
+                              .wait_state_diagnosed(&pair.nodes[1 - i].actor_id(), WAIT, |s| {
+                                  s.sendable && s.pc_generation > prior.pc_generation
+                              })
+                              .await
+                              .unwrap_or_else(|e| panic!("cycle={cycle} peer_index={i} prior={prior:?}: {e}"));
+                      }"""
+          # Normalize the indentation introduced by this embedded script.
+          old = "\n".join(line[10:] if n else line for n, line in enumerate(old.splitlines()))
+          new = "\n".join(line[10:] if n else line for n, line in enumerate(new.splitlines()))
+          assert old in s, "diagnostic insertion anchor changed"
+          p.write_text(s.replace(old, new, 1))
+          PY
+          git diff --check
+          git diff -- crates/actr-hyper/tests/support/connection_governance_production.rs
+      - name: Build focused test binary
+        run: |
+          cargo test --locked -p actr-hyper --features test-utils --lib --no-run --message-format=json > build.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          paths = []
+          for line in Path("build.json").read_text().splitlines():
+              try: d = json.loads(line)
+              except ValueError: continue
+              if d.get("reason") == "compiler-artifact" and d.get("executable") and d.get("target", {}).get("name") == "actr_hyper":
+                  paths.append(d["executable"])
+          assert len(paths) == 1, paths
+          Path("test-binary.txt").write_text(paths[0])
+          PY
+      - name: Repeat exact test without retries
+        run: |
+          mkdir -p diagnostics
+          binary=$(cat test-binary.txt)
+          failures=0
+          for n in $(seq 1 20); do
+            echo "Iteration $n"
+            timeout 90s "$binary" --exact connection_governance_production::production_answerer_repeated_soft_hard_cycles_do_not_accumulate_lanes --nocapture > "diagnostics/iteration-$n.log" 2>&1 || failures=$((failures+1))
+          done
+          echo "Exact test: failures=$failures total=20" | tee diagnostics/summary.txt
+          echo "Observed failures are retained as evidence, not retried away."
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: recovery-${{ matrix.revision }}
+          path: |
+            diagnostics/
+            build.json
+          retention-days: 7
