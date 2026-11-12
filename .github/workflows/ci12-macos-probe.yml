@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runner: [macos-latest, macos-15]
+        runner: [macos-latest, macos-15, macos-15-intel]
     steps:
       - name: Record runner environment
         run: |
