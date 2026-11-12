@@ -259,10 +259,15 @@ jobs:
     timeout-minutes: 90
     permissions:
       contents: read
+    env:
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
     steps:
     - uses: actions/checkout@v5
-    - name: Prepare Linux build space
-      uses: ./.github/actions/prepare-linux-build
+    - name: Prepare Linux build space with native-build threshold
+      uses: ./.github/actions/ci15-web-space
+      with:
+        minimum-free-gib: '64'
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@1.99.0
       with:
@@ -349,6 +354,8 @@ jobs:
       contents: read
       actions: read
     env:
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
       CARGO_TERM_COLOR: always
       RUST_BACKTRACE: 1
       RUSTUP_TOOLCHAIN: 1.99.0
@@ -357,8 +364,10 @@ jobs:
       SCCACHE_GHA_ENABLED: 'true'
     steps:
     - uses: actions/checkout@v5
-    - name: Prepare Linux build space
-      uses: ./.github/actions/prepare-linux-build
+    - name: Prepare Linux build space with native-build threshold
+      uses: ./.github/actions/ci15-web-space
+      with:
+        minimum-free-gib: '64'
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@1.99.0
       with:
@@ -472,6 +481,7 @@ jobs:
         shard: ${{ fromJSON(contains(github.ref_name, 'ci15-combined-candidate-') && '["build-heavy","network","rest"]' ||
           '["realtime","rest"]') }}
     env:
+      CARGO_PROFILE_DEV_DEBUG: '0'
       CARGO_TERM_COLOR: always
       RUST_BACKTRACE: 1
       ACTR_REQUIRE_WASM_FIXTURE: '1'
@@ -489,8 +499,10 @@ jobs:
       BUILD_HEAVY_BINARIES: binary(rust_echo) | binary(dynclib_actor_e2e)
     steps:
     - uses: actions/checkout@v5
-    - name: Prepare Linux build space
-      uses: ./.github/actions/prepare-linux-build
+    - name: Prepare Linux build space with native-build threshold
+      uses: ./.github/actions/ci15-web-space
+      with:
+        minimum-free-gib: '64'
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@1.99.0
       with:
@@ -611,6 +623,8 @@ jobs:
       contents: read
       actions: read
     env:
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
       CARGO_TERM_COLOR: always
       RUST_BACKTRACE: 1
       ACTR_REQUIRE_WASM_FIXTURE: '1'
@@ -618,8 +632,10 @@ jobs:
       SCCACHE_GHA_ENABLED: 'true'
     steps:
     - uses: actions/checkout@v5
-    - name: Prepare Linux build space
-      uses: ./.github/actions/prepare-linux-build
+    - name: Prepare Linux build space with native-build threshold
+      uses: ./.github/actions/ci15-web-space
+      with:
+        minimum-free-gib: '64'
     - name: Install protoc
       uses: arduino/setup-protoc@v3
       with:
