@@ -1,0 +1,751 @@
+[
+  {
+    "run_id": 43212875382,
+    "url": "https://github.com/kaito-harry/actrium/actions/runs/43212875382",
+    "sha": "754a8c450f49c98f08c8c9935dd0cd1812681cba",
+    "attempt": 1,
+    "conclusion": "success",
+    "push": {
+      "branch": "experiment/ci15-combined-baseline-b01",
+      "sha": "754a8c450f49c98f08c8c9935dd0cd1812681cba",
+      "request": "2026-11-12T11:52:23.556Z",
+      "response": "2026-11-12T11:52:26.795Z",
+      "condition": "cold",
+      "variant": "baseline"
+    },
+    "workflow_created_at": "2026-11-12T11:52:28Z",
+    "workflow_updated_at": "2026-11-12T12:21:02Z",
+    "gate_completed_at": "2026-11-12T12:18:26Z",
+    "complete_completed_at": "2026-11-12T12:21:01Z",
+    "push_to_gate": {
+      "min_s": 1559.205,
+      "max_s": 1562.444
+    },
+    "push_to_workflow": {
+      "min_s": 1715.205,
+      "max_s": 1718.444
+    },
+    "created_to_gate_s": 1558,
+    "created_to_workflow_s": 1714,
+    "jobs": [
+      {
+        "id": 131164666018,
+        "name": "Determine Affected Targets",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T11:52:32Z",
+        "completed_at": "2026-11-12T11:52:47Z"
+      },
+      {
+        "id": 131164666306,
+        "name": "Commit Identity Privacy",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T11:52:32Z",
+        "completed_at": "2026-11-12T11:52:40Z"
+      },
+      {
+        "id": 131164666464,
+        "name": "Language Policy",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T11:52:32Z",
+        "completed_at": "2026-11-12T11:53:07Z"
+      },
+      {
+        "id": 131164815002,
+        "name": "Dependency Audit",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T11:52:51Z",
+        "completed_at": "2026-11-12T11:55:57Z"
+      },
+      {
+        "id": 131164815036,
+        "name": "Python Workload",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T11:52:50Z",
+        "completed_at": "2026-11-12T12:01:29Z"
+      },
+      {
+        "id": 131164815081,
+        "name": "TypeScript",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T11:52:51Z",
+        "completed_at": "2026-11-12T12:01:04Z"
+      },
+      {
+        "id": 131164815091,
+        "name": "Swift",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T11:52:54Z",
+        "completed_at": "2026-11-12T12:06:39Z"
+      },
+      {
+        "id": 131164815109,
+        "name": "Rust E2E Compile",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T11:52:50Z",
+        "completed_at": "2026-11-12T11:56:56Z"
+      },
+      {
+        "id": 131164815115,
+        "name": "C and Go Workloads",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T11:52:50Z",
+        "completed_at": "2026-11-12T12:01:48Z"
+      },
+      {
+        "id": 131164815119,
+        "name": "TypeScript Workload",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T11:52:53Z",
+        "completed_at": "2026-11-12T11:54:06Z"
+      },
+      {
+        "id": 131164815126,
+        "name": "Prepare CLI Web Runtime",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T11:52:50Z",
+        "completed_at": "2026-11-12T11:59:18Z"
+      },
+      {
+        "id": 131164815130,
+        "name": "Python Codegen",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T11:52:51Z",
+        "completed_at": "2026-11-12T11:53:10Z"
+      },
+      {
+        "id": 131164815315,
+        "name": "C# / ActrSharp + fixture (win-x64 gate)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T11:52:51Z",
+        "completed_at": "2026-11-12T11:57:15Z"
+      },
+      {
+        "id": 131164815468,
+        "name": "WebRTC",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T11:52:51Z",
+        "completed_at": "2026-11-12T12:07:21Z"
+      },
+      {
+        "id": 131166980277,
+        "name": "C# / ARM64 runner (signal-only)",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-12T11:57:16Z",
+        "completed_at": "2026-11-12T11:57:16Z"
+      },
+      {
+        "id": 131167958485,
+        "name": "Rust MSRV (1.95)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T11:59:21Z",
+        "completed_at": "2026-11-12T12:20:56Z"
+      },
+      {
+        "id": 131167958552,
+        "name": "Web",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T11:59:22Z",
+        "completed_at": "2026-11-12T12:03:40Z"
+      },
+      {
+        "id": 131167958563,
+        "name": "Rust",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T11:59:21Z",
+        "completed_at": "2026-11-12T12:18:20Z"
+      },
+      {
+        "id": 131167958564,
+        "name": "Test (Rust, realtime)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T11:59:21Z",
+        "completed_at": "2026-11-12T12:16:06Z"
+      },
+      {
+        "id": 131167958578,
+        "name": "Test (Rust, rest)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T11:59:21Z",
+        "completed_at": "2026-11-12T12:13:04Z"
+      },
+      {
+        "id": 131167958609,
+        "name": "E2E Package Runtime",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T11:59:21Z",
+        "completed_at": "2026-11-12T12:17:28Z"
+      },
+      {
+        "id": 131167958668,
+        "name": "Kotlin / Kotlin Codegen Test",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T11:59:21Z",
+        "completed_at": "2026-11-12T12:04:46Z"
+      },
+      {
+        "id": 131167958677,
+        "name": "Kotlin / Kotlin Binding Test",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T11:59:21Z",
+        "completed_at": "2026-11-12T12:03:21Z"
+      },
+      {
+        "id": 131167958722,
+        "name": "Kotlin / Kotlin Android Native Build",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T11:59:22Z",
+        "completed_at": "2026-11-12T12:09:49Z"
+      },
+      {
+        "id": 131167958777,
+        "name": "Kotlin / Kotlin Android Script Check",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T11:59:21Z",
+        "completed_at": "2026-11-12T11:59:26Z"
+      },
+      {
+        "id": 131177571508,
+        "name": "Gate",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:18:23Z",
+        "completed_at": "2026-11-12T12:18:26Z"
+      },
+      {
+        "id": 131178896315,
+        "name": "All workflow jobs including MSRV",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:20:59Z",
+        "completed_at": "2026-11-12T12:21:01Z"
+      }
+    ]
+  },
+  {
+    "run_id": 43217496737,
+    "url": "https://github.com/kaito-harry/actrium/actions/runs/43217496737",
+    "sha": "754a8c450f49c98f08c8c9935dd0cd1812681cba",
+    "attempt": 1,
+    "conclusion": "success",
+    "push": {
+      "branch": "experiment/ci15-combined-candidate-c01",
+      "sha": "754a8c450f49c98f08c8c9935dd0cd1812681cba",
+      "request": "2026-11-12T12:23:40.661Z",
+      "response": "2026-11-12T12:23:45.923Z",
+      "condition": "cold",
+      "variant": "candidate"
+    },
+    "workflow_created_at": "2026-11-12T12:23:47Z",
+    "workflow_updated_at": "2026-11-12T12:43:00Z",
+    "gate_completed_at": "2026-11-12T12:41:25Z",
+    "complete_completed_at": "2026-11-12T12:43:00Z",
+    "push_to_gate": {
+      "min_s": 1059.077,
+      "max_s": 1064.339
+    },
+    "push_to_workflow": {
+      "min_s": 1154.077,
+      "max_s": 1159.339
+    },
+    "created_to_gate_s": 1058,
+    "created_to_workflow_s": 1153,
+    "jobs": [
+      {
+        "id": 131180349085,
+        "name": "Commit Identity Privacy",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:23:50Z",
+        "completed_at": "2026-11-12T12:23:59Z"
+      },
+      {
+        "id": 131180349653,
+        "name": "Determine Affected Targets",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:23:51Z",
+        "completed_at": "2026-11-12T12:24:04Z"
+      },
+      {
+        "id": 131180350488,
+        "name": "Language Policy",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:23:51Z",
+        "completed_at": "2026-11-12T12:24:24Z"
+      },
+      {
+        "id": 131180484848,
+        "name": "Dependency Audit",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:24:07Z",
+        "completed_at": "2026-11-12T12:27:06Z"
+      },
+      {
+        "id": 131180484934,
+        "name": "Swift",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:24:08Z",
+        "completed_at": "2026-11-12T12:38:16Z"
+      },
+      {
+        "id": 131180484946,
+        "name": "Rust E2E Compile",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:24:07Z",
+        "completed_at": "2026-11-12T12:27:37Z"
+      },
+      {
+        "id": 131180484959,
+        "name": "Prepare CLI Web Runtime",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:24:06Z",
+        "completed_at": "2026-11-12T12:26:14Z"
+      },
+      {
+        "id": 131180484960,
+        "name": "Python Codegen",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:24:07Z",
+        "completed_at": "2026-11-12T12:24:31Z"
+      },
+      {
+        "id": 131180485064,
+        "name": "WebRTC",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:24:07Z",
+        "completed_at": "2026-11-12T12:34:19Z"
+      },
+      {
+        "id": 131180485109,
+        "name": "C and Go Workloads",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:24:07Z",
+        "completed_at": "2026-11-12T12:31:48Z"
+      },
+      {
+        "id": 131180485138,
+        "name": "Python Workload",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:24:07Z",
+        "completed_at": "2026-11-12T12:33:30Z"
+      },
+      {
+        "id": 131180485145,
+        "name": "TypeScript Workload",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:24:07Z",
+        "completed_at": "2026-11-12T12:24:53Z"
+      },
+      {
+        "id": 131180485187,
+        "name": "TypeScript",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:24:07Z",
+        "completed_at": "2026-11-12T12:30:18Z"
+      },
+      {
+        "id": 131180485477,
+        "name": "C# / ActrSharp + fixture (win-x64 gate)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:24:08Z",
+        "completed_at": "2026-11-12T12:29:25Z"
+      },
+      {
+        "id": 131181600559,
+        "name": "Web",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:26:17Z",
+        "completed_at": "2026-11-12T12:30:00Z"
+      },
+      {
+        "id": 131181600755,
+        "name": "Rust",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:26:17Z",
+        "completed_at": "2026-11-12T12:35:04Z"
+      },
+      {
+        "id": 131181600812,
+        "name": "E2E Package Runtime",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:26:17Z",
+        "completed_at": "2026-11-12T12:39:18Z"
+      },
+      {
+        "id": 131181600844,
+        "name": "Test (Rust, network)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:26:17Z",
+        "completed_at": "2026-11-12T12:39:13Z"
+      },
+      {
+        "id": 131181600896,
+        "name": "Test (Rust, rest)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:26:17Z",
+        "completed_at": "2026-11-12T12:41:19Z"
+      },
+      {
+        "id": 131181600925,
+        "name": "Test (Rust, build-heavy)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:26:17Z",
+        "completed_at": "2026-11-12T12:37:25Z"
+      },
+      {
+        "id": 131181601126,
+        "name": "Kotlin / Kotlin Codegen Test",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:26:18Z",
+        "completed_at": "2026-11-12T12:33:13Z"
+      },
+      {
+        "id": 131181601133,
+        "name": "Kotlin / Kotlin Android Native Build",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:26:17Z",
+        "completed_at": "2026-11-12T12:35:00Z"
+      },
+      {
+        "id": 131181601152,
+        "name": "Kotlin / Kotlin Android Script Check",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:26:17Z",
+        "completed_at": "2026-11-12T12:26:24Z"
+      },
+      {
+        "id": 131181601189,
+        "name": "Rust MSRV (1.95)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:26:17Z",
+        "completed_at": "2026-11-12T12:42:54Z"
+      },
+      {
+        "id": 131181601203,
+        "name": "Kotlin / Kotlin Binding Test",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:26:17Z",
+        "completed_at": "2026-11-12T12:29:11Z"
+      },
+      {
+        "id": 131183225107,
+        "name": "C# / ARM64 runner (signal-only)",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-12T12:29:25Z",
+        "completed_at": "2026-11-12T12:29:25Z"
+      },
+      {
+        "id": 131189450030,
+        "name": "Gate",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:41:22Z",
+        "completed_at": "2026-11-12T12:41:25Z"
+      },
+      {
+        "id": 131190270094,
+        "name": "All workflow jobs including MSRV",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:42:57Z",
+        "completed_at": "2026-11-12T12:43:00Z"
+      }
+    ]
+  },
+  {
+    "run_id": 43220724283,
+    "url": "https://github.com/kaito-harry/actrium/actions/runs/43220724283",
+    "sha": "2ba1410cbf7ba2671f1634ab4728729a53228e1a",
+    "attempt": 1,
+    "conclusion": "success",
+    "push": {
+      "branch": "experiment/ci15-combined-baseline-b01",
+      "sha": "2ba1410cbf7ba2671f1634ab4728729a53228e1a",
+      "request": "2026-11-12T12:44:39.633Z",
+      "response": "2026-11-12T12:44:46.548Z",
+      "condition": "repeated-cache",
+      "variant": "baseline"
+    },
+    "workflow_created_at": "2026-11-12T12:44:48Z",
+    "workflow_updated_at": "2026-11-12T13:11:38Z",
+    "gate_completed_at": "2026-11-12T13:08:54Z",
+    "complete_completed_at": "2026-11-12T13:11:37Z",
+    "push_to_gate": {
+      "min_s": 1447.452,
+      "max_s": 1454.367
+    },
+    "push_to_workflow": {
+      "min_s": 1611.452,
+      "max_s": 1618.367
+    },
+    "created_to_gate_s": 1446,
+    "created_to_workflow_s": 1610,
+    "jobs": [
+      {
+        "id": 131191259964,
+        "name": "Language Policy",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:44:51Z",
+        "completed_at": "2026-11-12T12:45:19Z"
+      },
+      {
+        "id": 131191260214,
+        "name": "Determine Affected Targets",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:44:51Z",
+        "completed_at": "2026-11-12T12:45:06Z"
+      },
+      {
+        "id": 131191260261,
+        "name": "Commit Identity Privacy",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:44:51Z",
+        "completed_at": "2026-11-12T12:45:01Z"
+      },
+      {
+        "id": 131191415879,
+        "name": "Python Workload",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:45:09Z",
+        "completed_at": "2026-11-12T12:53:22Z"
+      },
+      {
+        "id": 131191415908,
+        "name": "Prepare CLI Web Runtime",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:45:10Z",
+        "completed_at": "2026-11-12T12:50:09Z"
+      },
+      {
+        "id": 131191416007,
+        "name": "TypeScript",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:45:09Z",
+        "completed_at": "2026-11-12T12:51:14Z"
+      },
+      {
+        "id": 131191416021,
+        "name": "C and Go Workloads",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:45:10Z",
+        "completed_at": "2026-11-12T12:52:23Z"
+      },
+      {
+        "id": 131191416027,
+        "name": "Dependency Audit",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:45:09Z",
+        "completed_at": "2026-11-12T12:48:28Z"
+      },
+      {
+        "id": 131191416072,
+        "name": "WebRTC",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:45:09Z",
+        "completed_at": "2026-11-12T12:55:05Z"
+      },
+      {
+        "id": 131191416125,
+        "name": "TypeScript Workload",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:45:09Z",
+        "completed_at": "2026-11-12T12:46:17Z"
+      },
+      {
+        "id": 131191416130,
+        "name": "Swift",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:46:11Z",
+        "completed_at": "2026-11-12T12:58:31Z"
+      },
+      {
+        "id": 131191416212,
+        "name": "Rust E2E Compile",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:45:22Z",
+        "completed_at": "2026-11-12T12:49:23Z"
+      },
+      {
+        "id": 131191416234,
+        "name": "Python Codegen",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:45:09Z",
+        "completed_at": "2026-11-12T12:45:36Z"
+      },
+      {
+        "id": 131191416528,
+        "name": "C# / ActrSharp + fixture (win-x64 gate)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:45:35Z",
+        "completed_at": "2026-11-12T12:52:23Z"
+      },
+      {
+        "id": 131194055432,
+        "name": "Test (Rust, realtime)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:52:34Z",
+        "completed_at": "2026-11-12T13:08:11Z"
+      },
+      {
+        "id": 131194055452,
+        "name": "Web",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:50:56Z",
+        "completed_at": "2026-11-12T12:55:39Z"
+      },
+      {
+        "id": 131194055480,
+        "name": "E2E Package Runtime",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:52:33Z",
+        "completed_at": "2026-11-12T13:08:49Z"
+      },
+      {
+        "id": 131194055495,
+        "name": "Test (Rust, rest)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:53:47Z",
+        "completed_at": "2026-11-12T13:07:21Z"
+      },
+      {
+        "id": 131194055499,
+        "name": "Rust",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:53:24Z",
+        "completed_at": "2026-11-12T13:08:15Z"
+      },
+      {
+        "id": 131194055564,
+        "name": "Kotlin / Kotlin Codegen Test",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:51:02Z",
+        "completed_at": "2026-11-12T12:55:31Z"
+      },
+      {
+        "id": 131194055616,
+        "name": "Kotlin / Kotlin Android Script Check",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:52:26Z",
+        "completed_at": "2026-11-12T12:52:31Z"
+      },
+      {
+        "id": 131194055679,
+        "name": "Kotlin / Kotlin Binding Test",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:54:10Z",
+        "completed_at": "2026-11-12T12:57:10Z"
+      },
+      {
+        "id": 131194055707,
+        "name": "Kotlin / Kotlin Android Native Build",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:51:17Z",
+        "completed_at": "2026-11-12T12:59:32Z"
+      },
+      {
+        "id": 131194055772,
+        "name": "Rust MSRV (1.95)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T12:54:26Z",
+        "completed_at": "2026-11-12T13:11:30Z"
+      },
+      {
+        "id": 131195241621,
+        "name": "C# / ARM64 runner (signal-only)",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-12T12:52:24Z",
+        "completed_at": "2026-11-12T12:52:24Z"
+      },
+      {
+        "id": 131204088548,
+        "name": "Gate",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T13:08:52Z",
+        "completed_at": "2026-11-12T13:08:54Z"
+      },
+      {
+        "id": 131205537644,
+        "name": "All workflow jobs including MSRV",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T13:11:33Z",
+        "completed_at": "2026-11-12T13:11:37Z"
+      }
+    ]
+  }
+]
