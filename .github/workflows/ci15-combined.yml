@@ -689,7 +689,9 @@ jobs:
       RUST_BACKTRACE: 1
       ACTR_REQUIRE_WASM_FIXTURE: '1'
       RUSTC_WRAPPER: sccache
-      SCCACHE_GHA_ENABLED: 'true'
+      SCCACHE_GHA_ENABLED: ${{ contains(github.ref_name, 'ci15-combined-candidate-') && 'false' || 'true' }}
+      SCCACHE_DIR: ${{ runner.temp }}/ci12-msrv-sccache
+      SCCACHE_CACHE_SIZE: 1G
     steps:
     - uses: actions/checkout@v5
     - name: Prepare Linux build space with native-build threshold
@@ -701,6 +703,15 @@ jobs:
       with:
         repo-token: ${{ github.token }}
         version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - name: Select local MSRV compiler cache
+      if: contains(github.ref_name, 'ci15-combined-candidate-')
+      run: echo 'SCCACHE_GHA_VERSION=' >> "$GITHUB_ENV"
+    - name: Cache local MSRV compiler results
+      if: contains(github.ref_name, 'ci15-combined-candidate-')
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/ci12-msrv-sccache
+        key: ${{ env.CI15_CACHE }}-msrv-sccache-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock', '**/Cargo.toml') }}
     - name: Run sccache-cache
       uses: mozilla-actions/sccache-action@v0.0.9
       with:
@@ -764,6 +775,9 @@ jobs:
     - name: Record final compiler cache statistics
       if: always()
       run: sccache --show-stats || true
+    - name: Stop local MSRV compiler cache
+      if: always() && contains(github.ref_name, 'ci15-combined-candidate-')
+      run: sccache --stop-server || true
   typescript:
     name: TypeScript
     needs: determine
