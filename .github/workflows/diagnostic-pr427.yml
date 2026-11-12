@@ -19,7 +19,7 @@ jobs:
       CARGO_PROFILE_TEST_DEBUG: "0"
       CARGO_INCREMENTAL: "0"
       RUST_BACKTRACE: "1"
-      RUST_LOG: "warn,actr_hyper::wire::webrtc::rtc::peer=debug"
+      RUST_LOG: "warn"
     steps:
       - uses: actions/checkout@v5
         with:
@@ -77,6 +77,17 @@ jobs:
           done
           echo "Exact test: failures=$failures total=20" | tee diagnostics/summary.txt
           echo "Observed failures are retained as evidence, not retried away."
+      - name: Repeat under concurrent realtime load
+        run: |
+          binary=$(cat test-binary.txt)
+          export binary
+          seq 1 40 | xargs -P 4 -I '{}' bash -c '
+            n="$1"
+            rc=0
+            timeout 90s "$binary" --exact connection_governance_production::production_answerer_repeated_soft_hard_cycles_do_not_accumulate_lanes --nocapture > "diagnostics/parallel-$n.log" 2>&1 || rc=$?
+            echo "$n $rc" > "diagnostics/parallel-$n.status"
+          ' _ '{}'
+          awk '$2 != 0 { failed++ } END {print "Parallel: failures=" failed+0 " total=" NR}' diagnostics/parallel-*.status | tee -a diagnostics/summary.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
