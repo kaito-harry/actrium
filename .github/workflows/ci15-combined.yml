@@ -262,6 +262,9 @@ jobs:
     env:
       CARGO_PROFILE_DEV_DEBUG: '0'
       CARGO_PROFILE_TEST_DEBUG: '0'
+      ACTR_TARGET_DIR: ${{ github.workspace }}/target/e2e-cache/package-runtime-echo/native
+      LORAN_TARGET_DIR: ${{ github.workspace }}/target/e2e-cache/package-runtime-echo/native
+      WORKSPACE_TARGET_DIR: ${{ github.workspace }}/target/e2e-cache/package-runtime-echo/native
     steps:
     - uses: actions/checkout@v5
     - name: Prepare Linux build space with native-build threshold
@@ -316,6 +319,18 @@ jobs:
       run: python3 tests/e2e/actr/package-runtime-echo/test_runtime_isolation.py
     - name: Verify HTTPS transport and certificate rejection
       run: python3 tests/e2e/actr/package-runtime-echo/test_https_documents.py
+    - name: Build the Loran fixture once for this checkout
+      run: |
+        CARGO_TARGET_DIR="$LORAN_TARGET_DIR" cargo test --no-run --message-format=json \
+          --manifest-path crates/loran-server/Cargo.toml --bin loran \
+          > "$RUNNER_TEMP/ci15-loran-fixture.jsonl"
+        fixture=$(jq -r '
+          select(.reason == "compiler-artifact" and .target.name == "loran"
+            and .profile.test == true and .executable != null) | .executable
+        ' "$RUNNER_TEMP/ci15-loran-fixture.jsonl" | tail -1)
+        test -x "$fixture"
+        "$fixture" --list | grep -Fx 'package_runtime_fixture: test'
+        printf 'LORAN_BIN=%s\n' "$fixture" >> "$GITHUB_ENV"
     - name: Run signed package runtime echo e2e
       run: bash tests/e2e/actr/package-runtime-echo/run.sh
     - name: Run provider and external domain Realms
@@ -1098,7 +1113,9 @@ jobs:
         ./uniffi-bindgen --version > ACTUAL_VERSION
         grep -Eq '^uniffi-bindgen 0\.31\.1$' ACTUAL_VERSION
         cmp VERSION ACTUAL_VERSION
-        install -m 0755 uniffi-bindgen "$HOME/.cargo/bin/uniffi-bindgen"
+        cargo_bin="${CARGO_HOME:-$HOME/.cargo}/bin"
+        mkdir -p "$cargo_bin"
+        install -m 0755 uniffi-bindgen "$cargo_bin/uniffi-bindgen"
     - name: Install UniFFI bindgen
       if: steps.cache-uniffi.outputs.cache-hit != 'true'
       run: "# Swatinem/rust-cache may already restore ~/.cargo/bin/uniffi-bindgen\n# from a prior run with a different key;\
