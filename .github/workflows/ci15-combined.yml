@@ -2,7 +2,7 @@ name: CI15 Combined Full Gate Experiment
 permissions:
   contents: read
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-ci12-v2
   cancel-in-progress: false
 jobs:
   identity:
