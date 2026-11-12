@@ -101,7 +101,7 @@ jobs:
       contents: read
       actions: read
     env:
-      RUSTUP_TOOLCHAIN: 1.99.0
+      RUSTUP_TOOLCHAIN: 1.99.1
       RUSTC_WRAPPER: sccache
       SCCACHE_GHA_ENABLED: 'true'
     steps:
@@ -111,7 +111,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: packages/actr-web/dist/sw
-        key: "${{ env.CI15_CACHE }}-cli-web-runtime-v5-rust1.99.0-wp0.15.0-pc${{ vars.PROTOC_VERSION || '29.3' }}-${{ hashFiles(\n\
+        key: "${{ env.CI15_CACHE }}-cli-web-runtime-v5-rust1.99.1-wp0.15.0-pc${{ vars.PROTOC_VERSION || '29.3' }}-${{ hashFiles(\n\
           \  'Cargo.toml', 'Cargo.lock', 'rust-toolchain*', '.cargo/config.toml',\n  'packages/actr-web/Cargo.toml', 'packages/actr-web/Cargo.lock',\n\
           \  'packages/actr-web/.cargo/config.toml', 'packages/actr-web/rust-toolchain*',\n  'packages/actr-web/packages/**',\
           \ 'packages/actr-web/crates/**',\n  'packages/actr-web/scripts/**', 'tools/ci/wasm-bindgen/**', 'crates/actr-protocol/**',\n\
@@ -132,7 +132,7 @@ jobs:
       if: (steps.web-runtime.outputs.ready != 'true') && (contains(github.ref_name, 'ci15-combined-candidate-'))
     - name: Setup Rust
       if: steps.web-runtime.outputs.ready != 'true'
-      uses: dtolnay/rust-toolchain@1.99.0
+      uses: dtolnay/rust-toolchain@1.99.1
       with:
         targets: wasm32-unknown-unknown
     - name: Install protoc
@@ -214,7 +214,7 @@ jobs:
     - name: Prepare Linux build space
       uses: ./.github/actions/prepare-linux-build
     - name: Setup Rust
-      uses: dtolnay/rust-toolchain@1.99.0
+      uses: dtolnay/rust-toolchain@1.99.1
       with:
         targets: wasm32-wasip2,wasm32-unknown-unknown
     - name: Install protoc
@@ -272,7 +272,7 @@ jobs:
       with:
         minimum-free-gib: '64'
     - name: Setup Rust
-      uses: dtolnay/rust-toolchain@1.99.0
+      uses: dtolnay/rust-toolchain@1.99.1
       with:
         targets: wasm32-unknown-unknown
     - name: Install Linux e2e dependencies
@@ -353,7 +353,7 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: Setup Rust
-      uses: dtolnay/rust-toolchain@1.99.0
+      uses: dtolnay/rust-toolchain@1.99.1
     - name: Install cargo-audit
       run: cargo install cargo-audit --version 0.22.2 --locked --force
     - name: Audit Cargo.lock
@@ -373,7 +373,7 @@ jobs:
       CARGO_PROFILE_TEST_DEBUG: '0'
       CARGO_TERM_COLOR: always
       RUST_BACKTRACE: 1
-      RUSTUP_TOOLCHAIN: 1.99.0
+      RUSTUP_TOOLCHAIN: 1.99.1
       ACTR_REQUIRE_WASM_FIXTURE: '1'
       RUSTC_WRAPPER: sccache
       SCCACHE_GHA_ENABLED: 'true'
@@ -384,7 +384,7 @@ jobs:
       with:
         minimum-free-gib: '64'
     - name: Setup Rust
-      uses: dtolnay/rust-toolchain@1.99.0
+      uses: dtolnay/rust-toolchain@1.99.1
       with:
         components: rustfmt,clippy
         targets: wasm32-wasip2,wasm32-unknown-unknown
@@ -470,7 +470,7 @@ jobs:
     - name: Clippy (deny warnings)
       env:
         CARGO_BUILD_WARNINGS: deny
-      run: cargo +1.99.0 clippy --workspace --all-targets --all-features
+      run: cargo +1.99.1 clippy --workspace --all-targets --all-features
     - name: Record observed cache outcomes
       if: always()
       env:
@@ -519,7 +519,7 @@ jobs:
       with:
         minimum-free-gib: '64'
     - name: Setup Rust
-      uses: dtolnay/rust-toolchain@1.99.0
+      uses: dtolnay/rust-toolchain@1.99.1
       with:
         components: rust-src
         targets: wasm32-wasip2,wasm32-unknown-unknown
@@ -767,7 +767,7 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: Setup Rust
-      uses: dtolnay/rust-toolchain@1.99.0
+      uses: dtolnay/rust-toolchain@1.99.1
     - name: Install protoc
       uses: arduino/setup-protoc@v3
       with:
@@ -956,7 +956,7 @@ jobs:
     - name: Prepare Linux build space
       uses: ./.github/actions/prepare-linux-build
     - name: Setup Rust
-      uses: dtolnay/rust-toolchain@1.99.0
+      uses: dtolnay/rust-toolchain@1.99.1
       with:
         targets: wasm32-wasip2,wasm32-unknown-unknown
     - name: Install protoc
@@ -1063,7 +1063,7 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: Set up Rust
-      uses: dtolnay/rust-toolchain@1.99.0
+      uses: dtolnay/rust-toolchain@1.99.1
       with:
         targets: aarch64-apple-darwin
     - uses: Swatinem/rust-cache@v2
@@ -1193,7 +1193,7 @@ jobs:
     - name: Prepare Linux build space
       uses: ./.github/actions/prepare-linux-build
     - name: Setup Rust
-      uses: dtolnay/rust-toolchain@1.99.0
+      uses: dtolnay/rust-toolchain@1.99.1
       with:
         components: rustfmt
         targets: wasm32-wasip2,wasm32-unknown-unknown
@@ -1280,7 +1280,7 @@ jobs:
     - name: Prepare Linux build space
       uses: ./.github/actions/prepare-linux-build
     - name: Setup Rust
-      uses: dtolnay/rust-toolchain@1.99.0
+      uses: dtolnay/rust-toolchain@1.99.1
       with:
         targets: wasm32-wasip2,wasm32-unknown-unknown
     - name: Install protoc
@@ -1344,13 +1344,13 @@ jobs:
     env:
       CARGO_TERM_COLOR: always
       RUST_BACKTRACE: 1
-      RUSTUP_TOOLCHAIN: 1.99.0
+      RUSTUP_TOOLCHAIN: 1.99.1
     steps:
     - uses: actions/checkout@v5
     - name: Prepare Linux build space
       uses: ./.github/actions/prepare-linux-build
     - name: Setup Rust
-      uses: dtolnay/rust-toolchain@1.99.0
+      uses: dtolnay/rust-toolchain@1.99.1
       with:
         components: clippy
         targets: wasm32-wasip2,wasm32-unknown-unknown
@@ -1382,7 +1382,7 @@ jobs:
     - name: Clippy (WebRTC, deny warnings)
       env:
         CARGO_BUILD_WARNINGS: deny
-      run: cargo +1.99.0 clippy -p actr-hyper --all-targets
+      run: cargo +1.99.1 clippy -p actr-hyper --all-targets
     - name: Test (WebRTC)
       run: cargo nextest run -p actr-hyper -E 'test(/^wire::webrtc::rtc/)' --no-fail-fast
     - name: Record observed cache outcomes

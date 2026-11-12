@@ -15,7 +15,7 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: Setup Rust
-      uses: dtolnay/rust-toolchain@1.99.0
+      uses: dtolnay/rust-toolchain@1.99.1
       with:
         targets: ${{ inputs.full_matrix && 'x86_64-pc-windows-msvc aarch64-pc-windows-msvc' || 'x86_64-pc-windows-msvc' }}
     - uses: Swatinem/rust-cache@v2

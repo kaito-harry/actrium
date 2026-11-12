@@ -17,7 +17,7 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: Setup Rust
-      uses: dtolnay/rust-toolchain@1.99.0
+      uses: dtolnay/rust-toolchain@1.99.1
       with:
         targets: aarch64-linux-android,x86_64-linux-android
     - name: Setup Android NDK
@@ -99,7 +99,7 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     - name: Setup Rust
-      uses: dtolnay/rust-toolchain@1.99.0
+      uses: dtolnay/rust-toolchain@1.99.1
       with:
         targets: wasm32-unknown-unknown
     - uses: Swatinem/rust-cache@v2
