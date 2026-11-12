@@ -256,13 +256,17 @@ jobs:
           }}", "outcome": "${{ steps.ci15-cache-4.outcome }}"}]'
       run: echo "$CI15_CACHE_REPORT"; echo "$CI15_CACHE_REPORT" >> "$GITHUB_STEP_SUMMARY"
   e2e_package_runtime:
-    name: E2E Package Runtime
+    name: E2E Package Runtime (${{ matrix.scenario }})
     needs:
     - determine
     - cli_web_assets
     if: needs.determine.outputs.e2e_package_runtime == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [echo, realms, rotation]
     permissions:
       contents: read
     env:
@@ -322,8 +326,10 @@ jobs:
 
         '
     - name: Verify Publisher signing-key isolation
+      if: matrix.scenario == 'echo'
       run: python3 tests/e2e/actr/package-runtime-echo/test_runtime_isolation.py
     - name: Verify HTTPS transport and certificate rejection
+      if: matrix.scenario == 'echo'
       run: python3 tests/e2e/actr/package-runtime-echo/test_https_documents.py
     - name: Build the Loran fixture once for this checkout
       run: |
@@ -338,10 +344,13 @@ jobs:
         "$fixture" --list | grep -Fx 'package_runtime_fixture: test'
         printf 'LORAN_BIN=%s\n' "$fixture" >> "$GITHUB_ENV"
     - name: Run signed package runtime echo e2e
+      if: matrix.scenario == 'echo'
       run: bash tests/e2e/actr/package-runtime-echo/run.sh
     - name: Run provider and external domain Realms
+      if: matrix.scenario == 'realms'
       run: bash tests/e2e/actr/package-runtime-echo/realm-matrix.sh
     - name: Verify retired and revoked Publisher signing keys
+      if: matrix.scenario == 'rotation'
       run: MODE=rotation bash tests/e2e/actr/package-runtime-echo/run.sh
     - name: Record observed cache outcomes
       if: always()
