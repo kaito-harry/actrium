@@ -239,7 +239,7 @@ jobs:
 
         ldd "$RUNNER_TEMP/e2e-fixtures/bin/loran-fixture"
 
-        "$RUNNER_TEMP/e2e-fixtures/bin/actr" --version
+        "$RUNNER_TEMP/e2e-fixtures/bin/actr" --help
 
         "$RUNNER_TEMP/e2e-fixtures/bin/loran-fixture" --list | grep ''^package_runtime_fixture: test$''
 
