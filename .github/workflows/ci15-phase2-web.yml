@@ -1,0 +1,111 @@
+name: CI15 phase2 Web cleanup
+'on':
+  push:
+    branches:
+    - experiment/ci15-phase2-web-20261112
+permissions:
+  contents: read
+jobs:
+  web:
+    name: Web preparation (${{ matrix.cleanup }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+    env:
+      RUSTUP_TOOLCHAIN: 1.99.0
+      RUSTC_WRAPPER: sccache
+      SCCACHE_GHA_ENABLED: 'true'
+      SCCACHE_GHA_VERSION: ci15-p2-web-cleanup-${{ matrix.cleanup }}-20261112
+    steps:
+    - uses: actions/checkout@v5
+    - name: Start disk sampling
+      run: 'nohup bash -c ''while true; do date -u +%FT%TZ; df -B1 /; sleep 10; done'' > "$RUNNER_TEMP/disk-samples.txt" 2>&1 < /dev/null &
+
+        echo "DISK_SAMPLER_PID=$!" >> "$GITHUB_ENV"'
+    - name: Cache CLI web runtime assets
+      id: cli-web-assets
+      uses: actions/cache@v4
+      with:
+        path: packages/actr-web/dist/sw
+        key: "ci15-p2-web-cleanup-${{ matrix.cleanup }}-20261112-cli-web-runtime-v5-rust1.99.0-wp0.15.0-pc${{ vars.PROTOC_VERSION || '29.3' }}-${{ hashFiles(\n  'Cargo.toml', 'Cargo.lock', 'rust-toolchain*', '.cargo/config.toml',\n  'packages/actr-web/Cargo.toml', 'packages/actr-web/Cargo.lock',\n  'packages/actr-web/.cargo/config.toml', 'packages/actr-web/rust-toolchain*',\n  'packages/actr-web/packages/**', 'packages/actr-web/crates/**',\n  'packages/actr-web/scripts/**', 'tools/ci/wasm-bindgen/**', 'crates/actr-protocol/**',\n  'crates/actr-framework/**', 'crates/actr-platform-traits/**',\n  'crates/actr-pack/**', 'crates/actr-runtime-mailbox/**',\n  'crates/actr-relay-security/**') }}"
+    - name: Check cached Web runtime
+      id: web-runtime
+      env:
+        CACHE_HIT: ${{ steps.cli-web-assets.outputs.cache-hit }}
+      run: "dist=packages/actr-web/dist/sw\nready=false\nif [[ \"$CACHE_HIT\" == true && -s \"$dist/actr_sw_host_bg.wasm\" &&\n      -s \"$dist/actr_sw_host.js\" && -s \"$dist/actr_sw_host.d.ts\" &&\n      -s \"$dist/package.json\" ]]; then\n  ready=true\nfi\necho \"ready=$ready\" >> \"$GITHUB_OUTPUT\"\n"
+    - name: Prepare Linux build space
+      if: matrix.cleanup == 'original' && steps.web-runtime.outputs.ready != 'true'
+      uses: ./.github/actions/prepare-linux-build
+    - name: Setup Rust
+      if: steps.web-runtime.outputs.ready != 'true'
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        targets: wasm32-unknown-unknown
+    - name: Install protoc
+      if: steps.web-runtime.outputs.ready != 'true'
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - name: Run sccache-cache
+      if: steps.web-runtime.outputs.ready != 'true'
+      uses: mozilla-actions/sccache-action@v0.0.9
+      with:
+        version: v0.18.0
+    - name: Cache cold web-build dependencies
+      if: steps.web-runtime.outputs.ready != 'true'
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: packages/actr-web -> ../../target/bindings-web
+        cache-bin: false
+        shared-key: cli-web-assets
+        prefix-key: ci15-p2-web-cleanup-${{ matrix.cleanup }}-20261112
+    - name: Install pinned prebuilt WebAssembly tools
+      uses: ./.github/actions/install-wasm-tools
+      with:
+        wasm-pack-only: 'true'
+      if: steps.web-runtime.outputs.ready != 'true'
+    - name: Build CLI web runtime assets
+      if: steps.web-runtime.outputs.ready != 'true'
+      run: bash packages/actr-web/scripts/sync-cli-assets.sh --build
+    - name: Sync cached CLI web runtime assets
+      if: steps.web-runtime.outputs.ready == 'true'
+      run: bash packages/actr-web/scripts/sync-cli-assets.sh
+    - name: Verify Web runtime before uploading
+      run: "for file in actr_sw_host_bg.wasm actr_sw_host.js actr_sw_host.d.ts package.json; do\n  test -s \"packages/actr-web/dist/sw/$file\" || { echo \"Missing Web runtime output: $file\" >&2; exit 1; }\ndone\nbash packages/actr-web/scripts/sync-cli-assets.sh --check\n"
+    - name: Upload CLI web runtime assets
+      uses: actions/upload-artifact@v4
+      with:
+        name: cli-web-runtime-${{ matrix.cleanup }}
+        path: 'crates/actr-cli/assets/web-runtime/actr_sw_host_bg.wasm
+
+          crates/actr-cli/assets/web-runtime/actr_sw_host.js
+
+          '
+        if-no-files-found: error
+        retention-days: 1
+    - name: Upload sw-host runtime assets
+      uses: actions/upload-artifact@v4
+      with:
+        name: sw-host-runtime-${{ matrix.cleanup }}
+        path: packages/actr-web/dist/sw/
+        if-no-files-found: error
+        retention-days: 1
+    - name: Disk usage at end
+      if: always()
+      run: df -h /; du -sh target 2>/dev/null || true
+    - name: Collect sampled disk usage and cache statistics
+      if: always()
+      run: 'kill "$DISK_SAMPLER_PID" || true
+
+        cat "$RUNNER_TEMP/disk-samples.txt"
+
+        if command -v sccache >/dev/null; then sccache --show-stats; fi'
+    strategy:
+      fail-fast: false
+      matrix:
+        cleanup:
+        - original
+        - skip
