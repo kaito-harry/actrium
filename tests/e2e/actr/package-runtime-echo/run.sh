@@ -124,7 +124,7 @@ LORAN_PID=""
 HTTPS_PID=""
 SERVER_PID=""
 CLIENT_PID=""
-ACTR_CLI_BIN=""
+ACTR_CLI_BIN="${ACTR_CLI_BIN:-}"
 ADMIN_TOKEN=""
 SERVICE_PACKAGE=""
 SERVICE_VERSION=""
@@ -170,6 +170,12 @@ run_actr() {
 }
 
 build_local_actr_cli() {
+    if [ -n "${ACTR_CLI_BIN:-}" ]; then
+        [ "$BACKEND" = cdylib ] || fail "Caller-provided default-feature CLI is only supported for cdylib"
+        [ -x "$ACTR_CLI_BIN" ] || fail "Caller-provided actr CLI is not executable: $ACTR_CLI_BIN"
+        success "Using caller-provided actr CLI: $ACTR_CLI_BIN"
+        return 0
+    fi
     section "🔧 Building local actr CLI"
     if [ "$BACKEND" = v2-component ]; then
         set -- --features wasm-engine

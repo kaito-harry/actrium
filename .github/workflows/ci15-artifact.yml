@@ -1,0 +1,263 @@
+name: CI15 Artifact Reuse Experiment
+'on':
+  push:
+    branches:
+    - experiment/ci15-artifact-20261112
+permissions:
+  contents: read
+jobs:
+  web:
+    env:
+      RUSTC_WRAPPER: sccache
+      RUSTUP_TOOLCHAIN: 1.99.0
+      SCCACHE_GHA_ENABLED: 'true'
+      SCCACHE_GHA_VERSION: ci15-artifact-v1-20261112
+    name: Prepare CLI Web Runtime
+    permissions:
+      actions: read
+      contents: read
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v5
+    - id: cli-web-assets
+      name: Cache CLI web runtime assets
+      uses: actions/cache@v4
+      with:
+        key: "ci15-artifact-v1-20261112-cli-web-runtime-v5-rust1.99.0-wp0.15.0-pc${{ vars.PROTOC_VERSION || '29.3' }}-${{ hashFiles(\n  'Cargo.toml', 'Cargo.lock', 'rust-toolchain*', '.cargo/config.toml',\n  'packages/actr-web/Cargo.toml', 'packages/actr-web/Cargo.lock',\n  'packages/actr-web/.cargo/config.toml', 'packages/actr-web/rust-toolchain*',\n  'packages/actr-web/packages/**', 'packages/actr-web/crates/**',\n  'packages/actr-web/scripts/**', 'tools/ci/wasm-bindgen/**', 'crates/actr-protocol/**',\n  'crates/actr-framework/**', 'crates/actr-platform-traits/**',\n  'crates/actr-pack/**', 'crates/actr-runtime-mailbox/**',\n  'crates/actr-relay-security/**') }}"
+        path: packages/actr-web/dist/sw
+    - env:
+        CACHE_HIT: ${{ steps.cli-web-assets.outputs.cache-hit }}
+      id: web-runtime
+      name: Check cached Web runtime
+      run: "dist=packages/actr-web/dist/sw\nready=false\nif [[ \"$CACHE_HIT\" == true && -s \"$dist/actr_sw_host_bg.wasm\" &&\n      -s \"$dist/actr_sw_host.js\" && -s \"$dist/actr_sw_host.d.ts\" &&\n      -s \"$dist/package.json\" ]]; then\n  ready=true\nfi\necho \"ready=$ready\" >> \"$GITHUB_OUTPUT\"\n"
+    - if: steps.web-runtime.outputs.ready != 'true'
+      name: Prepare Linux build space
+      uses: ./.github/actions/prepare-linux-build
+    - if: steps.web-runtime.outputs.ready != 'true'
+      name: Setup Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        targets: wasm32-unknown-unknown
+    - if: steps.web-runtime.outputs.ready != 'true'
+      name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - if: steps.web-runtime.outputs.ready != 'true'
+      name: Run sccache-cache
+      uses: mozilla-actions/sccache-action@v0.0.9
+      with:
+        version: v0.18.0
+    - if: steps.web-runtime.outputs.ready != 'true'
+      name: Cache cold web-build dependencies
+      uses: Swatinem/rust-cache@v2
+      with:
+        cache-bin: false
+        prefix-key: ci15-artifact-v1-20261112
+        shared-key: cli-web-assets
+        workspaces: packages/actr-web -> ../../target/bindings-web
+    - if: steps.web-runtime.outputs.ready != 'true'
+      name: Install pinned prebuilt WebAssembly tools
+      uses: ./.github/actions/install-wasm-tools
+      with:
+        wasm-pack-only: 'true'
+    - if: steps.web-runtime.outputs.ready != 'true'
+      name: Build CLI web runtime assets
+      run: bash packages/actr-web/scripts/sync-cli-assets.sh --build
+    - if: steps.web-runtime.outputs.ready == 'true'
+      name: Sync cached CLI web runtime assets
+      run: bash packages/actr-web/scripts/sync-cli-assets.sh
+    - name: Verify Web runtime before uploading
+      run: "for file in actr_sw_host_bg.wasm actr_sw_host.js actr_sw_host.d.ts package.json; do\n  test -s \"packages/actr-web/dist/sw/$file\" || { echo \"Missing Web runtime output: $file\" >&2; exit 1; }\ndone\nbash packages/actr-web/scripts/sync-cli-assets.sh --check\n"
+    - name: Upload CLI web runtime assets
+      uses: actions/upload-artifact@v4
+      with:
+        if-no-files-found: error
+        name: cli-web-runtime
+        path: 'crates/actr-cli/assets/web-runtime/actr_sw_host_bg.wasm
+
+          crates/actr-cli/assets/web-runtime/actr_sw_host.js
+
+          '
+        retention-days: 1
+    - name: Upload sw-host runtime assets
+      uses: actions/upload-artifact@v4
+      with:
+        if-no-files-found: error
+        name: sw-host-runtime
+        path: packages/actr-web/dist/sw/
+        retention-days: 1
+    - if: always()
+      name: Disk usage at end
+      run: df -h /; du -sh target 2>/dev/null || true
+    timeout-minutes: 30
+  producer:
+    name: Build same-SHA E2E fixtures
+    needs:
+    - web
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v5
+    - name: Prepare Linux build space
+      uses: ./.github/actions/prepare-linux-build
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        targets: wasm32-unknown-unknown
+    - name: Install Linux e2e dependencies
+      run: 'sudo rm -f /etc/apt/sources.list.d/google-chrome*
+
+        sudo apt-get update
+
+        sudo apt-get install -y jq sqlite3 lsof perl bubblewrap openssl
+
+        '
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - name: Install pinned prebuilt WebAssembly tools
+      uses: ./.github/actions/install-wasm-tools
+      with:
+        wasm-pack-only: 'true'
+    - name: Download CLI web runtime assets
+      uses: actions/download-artifact@v4
+      with:
+        name: cli-web-runtime
+        path: crates/actr-cli/assets/web-runtime
+    - name: Sync CLI source assets
+      run: 'test -s crates/actr-cli/assets/web-runtime/actr_sw_host_bg.wasm
+
+        test -s crates/actr-cli/assets/web-runtime/actr_sw_host.js
+
+        bash packages/actr-web/scripts/sync-cli-assets.sh --skip-sw-host
+
+        '
+    - name: Build original default-feature CLI and Loran fixture
+      run: 'set -euo pipefail
+
+        mkdir -p "$RUNNER_TEMP/e2e-fixtures/bin"
+
+        CARGO_TARGET_DIR="$PWD/target/e2e-cache/package-runtime-echo/actr-cli" cargo build --manifest-path crates/actr-cli/Cargo.toml --bin actr
+
+        cp target/e2e-cache/package-runtime-echo/actr-cli/debug/actr "$RUNNER_TEMP/e2e-fixtures/bin/actr"
+
+        CARGO_TARGET_DIR="$PWD/target/e2e-cache/package-runtime-echo/loran-bin" cargo test --no-run --message-format=json --manifest-path crates/loran-server/Cargo.toml --bin loran > "$RUNNER_TEMP/loran-build.jsonl"
+
+        loran=$(jq -r ''select(.reason == "compiler-artifact" and .target.name == "loran" and .profile.test == true and .executable != null) | .executable'' "$RUNNER_TEMP/loran-build.jsonl" | tail -1)
+
+        test -x "$loran"
+
+        cp "$loran" "$RUNNER_TEMP/e2e-fixtures/bin/loran-fixture"
+
+        "$RUNNER_TEMP/e2e-fixtures/bin/loran-fixture" --list | grep ''^package_runtime_fixture: test$''
+
+        python3 tools/ci/ci15-artifact-manifest.py create "$RUNNER_TEMP/e2e-fixtures"
+
+        tar -C "$RUNNER_TEMP" -czf "$RUNNER_TEMP/e2e-fixtures.tar.gz" e2e-fixtures
+
+        stat -c ''compressed_bytes=%s'' "$RUNNER_TEMP/e2e-fixtures.tar.gz"
+
+        du -sb "$RUNNER_TEMP/e2e-fixtures"
+
+        '
+    - name: Upload executable fixture archive
+      uses: actions/upload-artifact@v4
+      with:
+        name: e2e-fixtures-${{ github.sha }}
+        path: ${{ runner.temp }}/e2e-fixtures.tar.gz
+        compression-level: 0
+        retention-days: 3
+    - name: Disk usage at end
+      if: always()
+      run: df -h /; du -sh target 2>/dev/null || true
+  consumer:
+    name: 'Consume same-SHA fixtures: four sequential scenarios'
+    needs:
+    - web
+    - producer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v5
+    - name: Prepare Linux build space
+      uses: ./.github/actions/prepare-linux-build
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        targets: wasm32-unknown-unknown
+    - name: Install Linux e2e dependencies
+      run: 'sudo rm -f /etc/apt/sources.list.d/google-chrome*
+
+        sudo apt-get update
+
+        sudo apt-get install -y jq sqlite3 lsof perl bubblewrap openssl
+
+        '
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - name: Install pinned prebuilt WebAssembly tools
+      uses: ./.github/actions/install-wasm-tools
+      with:
+        wasm-pack-only: 'true'
+    - name: Download CLI web runtime assets
+      uses: actions/download-artifact@v4
+      with:
+        name: cli-web-runtime
+        path: crates/actr-cli/assets/web-runtime
+    - name: Sync CLI source assets
+      run: 'test -s crates/actr-cli/assets/web-runtime/actr_sw_host_bg.wasm
+
+        test -s crates/actr-cli/assets/web-runtime/actr_sw_host.js
+
+        bash packages/actr-web/scripts/sync-cli-assets.sh --skip-sw-host
+
+        '
+    - name: Download same-SHA executable fixture archive
+      uses: actions/download-artifact@v4
+      with:
+        name: e2e-fixtures-${{ github.sha }}
+        path: ${{ runner.temp }}/fixture-download
+    - name: Verify artifact provenance and executable permissions
+      run: 'set -euo pipefail
+
+        tar -xzf "$RUNNER_TEMP/fixture-download/e2e-fixtures.tar.gz" -C "$RUNNER_TEMP"
+
+        python3 tools/ci/ci15-artifact-manifest.py verify "$RUNNER_TEMP/e2e-fixtures"
+
+        ldd "$RUNNER_TEMP/e2e-fixtures/bin/actr"
+
+        ldd "$RUNNER_TEMP/e2e-fixtures/bin/loran-fixture"
+
+        "$RUNNER_TEMP/e2e-fixtures/bin/actr" --version
+
+        "$RUNNER_TEMP/e2e-fixtures/bin/loran-fixture" --list | grep ''^package_runtime_fixture: test$''
+
+        echo "ACTR_CLI_BIN=$RUNNER_TEMP/e2e-fixtures/bin/actr" >> "$GITHUB_ENV"
+
+        echo "LORAN_BIN=$RUNNER_TEMP/e2e-fixtures/bin/loran-fixture" >> "$GITHUB_ENV"
+
+        '
+    - name: Verify Publisher signing-key isolation
+      run: python3 tests/e2e/actr/package-runtime-echo/test_runtime_isolation.py
+    - name: Verify HTTPS transport and certificate rejection
+      run: python3 tests/e2e/actr/package-runtime-echo/test_https_documents.py
+    - name: Run signed package runtime echo e2e
+      run: bash tests/e2e/actr/package-runtime-echo/run.sh
+    - name: Run provider and external domain Realms
+      run: bash tests/e2e/actr/package-runtime-echo/realm-matrix.sh
+    - name: Verify retired and revoked Publisher signing keys
+      run: MODE=rotation bash tests/e2e/actr/package-runtime-echo/run.sh
+    - name: Disk usage at end
+      if: always()
+      run: df -h /; du -sh target 2>/dev/null || true
