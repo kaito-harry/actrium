@@ -478,7 +478,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: ${{ fromJSON(contains(github.ref_name, 'ci15-combined-candidate-') && '["build-heavy","network","rest"]' ||
+        shard: ${{ fromJSON(contains(github.ref_name, 'ci15-combined-candidate-') && '["build-heavy","network","rest-1","rest-2"]' ||
           '["realtime","rest"]') }}
     env:
       CARGO_PROFILE_DEV_DEBUG: '0'
@@ -520,7 +520,7 @@ jobs:
     - uses: Swatinem/rust-cache@v2
       with:
         cache-targets: false
-        save-if: ${{ matrix.shard == 'rest' }}
+        save-if: ${{ matrix.shard == 'rest' || matrix.shard == 'rest-1' }}
         prefix-key: ${{ env.CI15_CACHE }}-rust
       id: ci15-cache-5
     - name: Run sccache-cache
@@ -563,11 +563,11 @@ jobs:
     - name: Install cargo-nextest
       uses: taiki-e/install-action@cargo-nextest
     - name: Build rest test inventory and verify RFC-0507 acceptance
-      if: matrix.shard == 'rest'
+      if: startsWith(matrix.shard, 'rest')
       run: "cargo metadata --format-version 1 --all-features --locked \\\n  > \"$RUNNER_TEMP/nextest-rest-cargo.json\"\ncargo\
         \ nextest list --workspace --all-features \\\n  --list-type binaries-only --message-format json \\\n  > \"$RUNNER_TEMP/nextest-rest-binaries.json\"\
         \ncargo nextest list \\\n  --cargo-metadata \"$RUNNER_TEMP/nextest-rest-cargo.json\" \\\n  --binaries-metadata \"\
-        $RUNNER_TEMP/nextest-rest-binaries.json\" \\\n  -E \"not($REALTIME_BINARIES)\" --message-format json \\\n  > \"$RUNNER_TEMP/nextest-rest-tests.json\"\
+        $RUNNER_TEMP/nextest-rest-binaries.json\" \\\n  -E \"!($REALTIME_BINARIES)\" --message-format json \\\n  > \"$RUNNER_TEMP/nextest-rest-tests.json\"\
         \npython3 - \"$RUNNER_TEMP/nextest-rest-tests.json\" <<'PY'\nimport json\nimport sys\n\nacceptance = \"outbound::peer_gate::websocket_tests::live_websocket_partial_write_is_uncertain_without_replay\"\
         \nwith open(sys.argv[1]) as source:\n    inventory = json.load(source)\nselected = []\nfor suite in inventory[\"rust-suites\"\
         ].values():\n    if suite[\"package-name\"] != \"actr-hyper\" or suite[\"kind\"] != \"lib\":\n        continue\n \
@@ -576,29 +576,67 @@ jobs:
         RFC-0507 acceptance must be selected exactly once in the rest shard\")\nprint(f\"RFC-0507 acceptance selected in {selected[0]};\
         \ the rest suite runs it without retries\")\nPY\n"
     - name: Candidate assert timer selected exactly once in rest
-      if: matrix.shard == 'rest' && (contains(github.ref_name, 'ci15-combined-candidate-'))
+      if: startsWith(matrix.shard, 'rest') && contains(github.ref_name, 'ci15-combined-candidate-')
       run: python3 .github/scripts/assert-ci15-timer.py "$RUNNER_TEMP/nextest-rest-tests.json"
+    - name: Verify rest test partitions
+      if: matrix.shard == 'rest-1' || matrix.shard == 'rest-2'
+      run: |
+        for part in 1 2; do
+          cargo nextest list \
+            --cargo-metadata "$RUNNER_TEMP/nextest-rest-cargo.json" \
+            --binaries-metadata "$RUNNER_TEMP/nextest-rest-binaries.json" \
+            -E "!($REALTIME_BINARIES)" --partition "hash:$part/2" --message-format json \
+            > "$RUNNER_TEMP/nextest-rest-$part.json"
+        done
+        python3 .github/scripts/ci15-assert-realtime.py \
+          "$RUNNER_TEMP/nextest-rest-tests.json" \
+          "$RUNNER_TEMP/nextest-rest-1.json" \
+          "$RUNNER_TEMP/nextest-rest-2.json"
     - name: Candidate realtime inventory partition assertion
       if: matrix.shard == 'build-heavy' || matrix.shard == 'network'
       run: "cargo metadata --format-version 1 --all-features --locked > \"$RUNNER_TEMP/realtime-cargo.json\"\ncargo nextest\
         \ list --workspace --all-features --list-type binaries-only --message-format json > \"$RUNNER_TEMP/realtime-binaries.json\"\
         \nfor partition in whole build-heavy network; do\n  filter=\"$REALTIME_BINARIES\"\n  if [[ \"$partition\" == build-heavy\
         \ ]]; then filter=\"($REALTIME_BINARIES) and ($BUILD_HEAVY_BINARIES)\"; fi\n  if [[ \"$partition\" == network ]];\
-        \ then filter=\"($REALTIME_BINARIES) and not($BUILD_HEAVY_BINARIES)\"; fi\n  cargo nextest list --cargo-metadata \"\
+        \ then filter=\"($REALTIME_BINARIES) and !($BUILD_HEAVY_BINARIES)\"; fi\n  cargo nextest list --cargo-metadata \"\
         $RUNNER_TEMP/realtime-cargo.json\" --binaries-metadata \"$RUNNER_TEMP/realtime-binaries.json\" -E \"$filter\" --message-format\
         \ json > \"$RUNNER_TEMP/realtime-$partition.json\"\ndone\npython3 .github/scripts/ci15-assert-realtime.py \"$RUNNER_TEMP/realtime-whole.json\"\
         \ \"$RUNNER_TEMP/realtime-build-heavy.json\" \"$RUNNER_TEMP/realtime-network.json\""
     - name: Run tests (nextest, ${{ matrix.shard }} shard)
-      run: "if [ \"${{ matrix.shard }}\" = realtime ]; then\n  cargo nextest run --workspace --all-features --no-fail-fast\
-        \ -E \"$REALTIME_BINARIES\"\nelif [[ \"${{ matrix.shard }}\" == build-heavy || \"${{ matrix.shard }}\" == network\
-        \ ]]; then\n  filter=\"($REALTIME_BINARIES) and ($BUILD_HEAVY_BINARIES)\"\n  if [[ \"${{ matrix.shard }}\" == network\
-        \ ]]; then filter=\"($REALTIME_BINARIES) and not($BUILD_HEAVY_BINARIES)\"; fi\n  cargo nextest run --cargo-metadata\
-        \ \"$RUNNER_TEMP/realtime-cargo.json\" --binaries-metadata \"$RUNNER_TEMP/realtime-binaries.json\" --no-fail-fast\
-        \ -E \"$filter\"\nelse\n  cargo nextest run \\\n    --cargo-metadata \"$RUNNER_TEMP/nextest-rest-cargo.json\" \\\n\
-        \    --binaries-metadata \"$RUNNER_TEMP/nextest-rest-binaries.json\" \\\n    --no-fail-fast -E \"not($REALTIME_BINARIES)\"\
-        \nfi\n"
+      env:
+        NEXTEST_SHARD: ${{ matrix.shard }}
+      run: |
+        case "$NEXTEST_SHARD" in
+          realtime)
+            cargo nextest run --workspace --all-features --no-fail-fast -E "$REALTIME_BINARIES"
+            ;;
+          build-heavy|network)
+            filter="($REALTIME_BINARIES) and ($BUILD_HEAVY_BINARIES)"
+            if [[ "$NEXTEST_SHARD" == network ]]; then
+              filter="($REALTIME_BINARIES) and !($BUILD_HEAVY_BINARIES)"
+            fi
+            cargo nextest run \
+              --cargo-metadata "$RUNNER_TEMP/realtime-cargo.json" \
+              --binaries-metadata "$RUNNER_TEMP/realtime-binaries.json" \
+              --no-fail-fast -E "$filter"
+            ;;
+          rest|rest-1|rest-2)
+            partition=()
+            if [[ "$NEXTEST_SHARD" != rest ]]; then
+              partition=(--partition "hash:${NEXTEST_SHARD#rest-}/2")
+            fi
+            cargo nextest run \
+              --cargo-metadata "$RUNNER_TEMP/nextest-rest-cargo.json" \
+              --binaries-metadata "$RUNNER_TEMP/nextest-rest-binaries.json" \
+              --no-fail-fast -E "!($REALTIME_BINARIES)" "${partition[@]}"
+            ;;
+          *)
+            printf 'Unexpected nextest shard: %s\n' "$NEXTEST_SHARD" >&2
+            exit 1
+            ;;
+        esac
     - name: Run doctests
-      if: matrix.shard == 'rest'
+      if: matrix.shard == 'rest' || matrix.shard == 'rest-1'
       run: cargo test --doc --workspace --all-features
     - name: sccache stats
       if: always()
@@ -1006,6 +1044,7 @@ jobs:
     runs-on: macos-latest
     permissions:
       contents: read
+      actions: read
     steps:
     - uses: actions/checkout@v5
     - name: Set up Rust
@@ -1027,6 +1066,39 @@ jobs:
       with:
         path: ~/.cargo/bin/uniffi-bindgen*
         key: ${{ env.CI15_CACHE }}-uniffi-bindgen-0.31.1-${{ runner.os }}-${{ runner.arch }}
+    - name: Restore verified prebuilt UniFFI bindgen
+      if: steps.cache-uniffi.outputs.cache-hit != 'true' && runner.arch == 'ARM64'
+      env:
+        CI15_ARTIFACT_TOKEN: ${{ github.token }}
+      run: |
+        tool_dir=$(mktemp -d "$RUNNER_TEMP/ci15-uniffi.XXXXXX")
+        trap 'rm -rf "$tool_dir"' EXIT
+        archive="$tool_dir/uniffi.zip"
+        if ! curl --fail --silent --show-error --location --max-time 20 \
+            --header "Authorization: Bearer $CI15_ARTIFACT_TOKEN" \
+            --output "$archive" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/artifacts/13930583174/zip"; then
+          echo "::notice::The prebuilt UniFFI artifact is unavailable. Using the locked source installer."
+          exit 0
+        fi
+
+        expected_digest=50a34435f80256bbe123af0e16781fa337d06748ee47b453ae42353edb2e7871
+        printf '%s  %s\n' "$expected_digest" "$archive" | shasum -a 256 -c -
+        unzip -q "$archive" -d "$tool_dir"
+        cd "$tool_dir"
+        shasum -a 256 -c SHA256SUMS
+        test "$(cat ARCH)" = "$(uname -m)"
+        rustc -vV > CURRENT_RUSTC
+        if ! cmp -s RUSTC CURRENT_RUSTC; then
+          echo "::notice::The prebuilt UniFFI toolchain differs. Using the locked source installer."
+          exit 0
+        fi
+
+        chmod +x uniffi-bindgen
+        ./uniffi-bindgen --version > ACTUAL_VERSION
+        grep -Eq '^uniffi-bindgen 0\.31\.1$' ACTUAL_VERSION
+        cmp VERSION ACTUAL_VERSION
+        install -m 0755 uniffi-bindgen "$HOME/.cargo/bin/uniffi-bindgen"
     - name: Install UniFFI bindgen
       if: steps.cache-uniffi.outputs.cache-hit != 'true'
       run: "# Swatinem/rust-cache may already restore ~/.cargo/bin/uniffi-bindgen\n# from a prior run with a different key;\

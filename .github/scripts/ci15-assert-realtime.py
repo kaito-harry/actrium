@@ -14,17 +14,22 @@ def selected(inventory):
     return set(items)
 
 
-def verify(whole, heavy, network):
-    if not whole or not heavy or not network:
-        raise ValueError('all realtime partitions must be nonempty')
-    if heavy & network:
-        raise ValueError(f'overlapping realtime tests: {sorted(heavy & network)}')
-    if heavy | network != whole:
-        raise ValueError(f'missing={sorted(whole-(heavy|network))}; extra={sorted((heavy|network)-whole)}')
-    print(f'Realtime partition verified: whole={len(whole)} build-heavy={len(heavy)} network={len(network)}')
+def verify(whole, first, second):
+    if not whole or not first or not second:
+        raise ValueError('all test partitions must be nonempty')
+    if first & second:
+        raise ValueError(f'overlapping tests: {sorted(first & second)}')
+    combined = first | second
+    if combined != whole:
+        raise ValueError(f'missing={sorted(whole - combined)}; extra={sorted(combined - whole)}')
+    print(f'Partition verified: whole={len(whole)} first={len(first)} second={len(second)}')
 
 
 if __name__ == '__main__':
     if len(sys.argv) != 4:
-        raise SystemExit('expected whole, build-heavy, network nextest JSON files')
-    verify(*(selected(json.load(open(p))) for p in sys.argv[1:]))
+        raise SystemExit('expected whole, first, and second nextest JSON files')
+    inventories = []
+    for path in sys.argv[1:]:
+        with open(path) as inventory:
+            inventories.append(selected(json.load(inventory)))
+    verify(*inventories)
