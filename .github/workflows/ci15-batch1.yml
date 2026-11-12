@@ -1,0 +1,1000 @@
+name: CI15 batch1
+'on':
+  push:
+    branches:
+    - experiment/ci15-batch1-20261112
+permissions:
+  contents: read
+concurrency:
+  group: ci15-batch1-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  identity:
+    name: Commit Identity Privacy
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Test identity policy
+      run: python .github/scripts/check_commit_identities_test.py
+    - name: Check newly introduced commits
+      env:
+        BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      run: python .github/scripts/check_commit_identities.py --base-sha "$BASE_SHA" --head-sha "$HEAD_SHA"
+    - name: Disk usage at end
+      if: always()
+      run: df -h /; du -sh target 2>/dev/null || true
+    env:
+      SCCACHE_GHA_VERSION: ci15-20261112-v1-batch1
+  determine:
+    name: Determine Affected Targets
+    runs-on: ubuntu-24.04
+    outputs:
+      mode: ${{ steps.targets.outputs.mode }}
+      changed_files_json: ${{ steps.targets.outputs.changed_files_json }}
+      reasons_json: ${{ steps.targets.outputs.reasons_json }}
+      rust_core: ${{ steps.targets.outputs.rust_core }}
+      ts_binding: ${{ steps.targets.outputs.ts_binding }}
+      ts_workload: ${{ steps.targets.outputs.ts_workload }}
+      python_codegen: ${{ steps.targets.outputs.python_codegen }}
+      python_workload: ${{ steps.targets.outputs.python_workload }}
+      swift_binding: ${{ steps.targets.outputs.swift_binding }}
+      kotlin_binding: ${{ steps.targets.outputs.kotlin_binding }}
+      csharp_binding: ${{ steps.targets.outputs.csharp_binding }}
+      web_binding: ${{ steps.targets.outputs.web_binding }}
+      c_go_workloads: ${{ steps.targets.outputs.c_go_workloads }}
+      e2e_rust: ${{ steps.targets.outputs.e2e_rust }}
+      e2e_package_runtime: ${{ steps.targets.outputs.e2e_package_runtime }}
+      release_related: ${{ steps.targets.outputs.release_related }}
+    steps:
+    - uses: actions/checkout@v5
+    - id: targets
+      name: Fixed Rust PR domain set
+      run: |-
+        python3 - <<'PYX'
+        import os,json
+        keys=['rust_core','e2e_rust','e2e_package_runtime','ts_binding','swift_binding','csharp_binding','web_binding','release_related']
+        with open(os.environ['GITHUB_OUTPUT'],'a') as f:
+            f.write('mode=ci15-rust-core-plus-package-e2e\nchanged_files_json=[]\nreasons_json=["controlled CI experiment"]\n')
+            for key in keys: f.write(key+'=true\n')
+        PYX
+    - name: Disk usage at end
+      if: always()
+      run: df -h /; du -sh target 2>/dev/null || true
+    env:
+      SCCACHE_GHA_VERSION: ci15-20261112-v1-batch1
+  cli_web_assets:
+    name: Prepare CLI Web Runtime
+    needs: determine
+    if: needs.determine.outputs.rust_core == 'true' || needs.determine.outputs.e2e_package_runtime == 'true' || needs.determine.outputs.web_binding == 'true' || needs.determine.outputs.kotlin_binding == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+    env:
+      RUSTUP_TOOLCHAIN: 1.99.0
+      RUSTC_WRAPPER: sccache
+      SCCACHE_GHA_ENABLED: 'true'
+      SCCACHE_GHA_VERSION: ci15-20261112-v1-batch1
+    steps:
+    - uses: actions/checkout@v5
+    - name: Cache CLI web runtime assets
+      id: cli-web-assets
+      uses: actions/cache@v4
+      with:
+        path: packages/actr-web/dist/sw
+        key: |-
+          ci15-20261112-v1-batch1-cli-web-runtime-v5-rust1.99.0-wp0.15.0-pc${{ vars.PROTOC_VERSION || '29.3' }}-${{ hashFiles(
+            'Cargo.toml', 'Cargo.lock', 'rust-toolchain*', '.cargo/config.toml',
+            'packages/actr-web/Cargo.toml', 'packages/actr-web/Cargo.lock',
+            'packages/actr-web/.cargo/config.toml', 'packages/actr-web/rust-toolchain*',
+            'packages/actr-web/packages/**', 'packages/actr-web/crates/**',
+            'packages/actr-web/scripts/**', 'tools/ci/wasm-bindgen/**', 'crates/actr-protocol/**',
+            'crates/actr-framework/**', 'crates/actr-platform-traits/**',
+            'crates/actr-pack/**', 'crates/actr-runtime-mailbox/**',
+            'crates/actr-relay-security/**') }}
+    - name: Check cached Web runtime
+      id: web-runtime
+      env:
+        CACHE_HIT: ${{ steps.cli-web-assets.outputs.cache-hit }}
+      run: |
+        dist=packages/actr-web/dist/sw
+        ready=false
+        if [[ "$CACHE_HIT" == true && -s "$dist/actr_sw_host_bg.wasm" &&
+              -s "$dist/actr_sw_host.js" && -s "$dist/actr_sw_host.d.ts" &&
+              -s "$dist/package.json" ]]; then
+          ready=true
+        fi
+        echo "ready=$ready" >> "$GITHUB_OUTPUT"
+    - name: Prepare Linux build space
+      if: steps.web-runtime.outputs.ready != 'true'
+      uses: ./.github/actions/prepare-linux-build
+    - name: Setup Rust
+      if: steps.web-runtime.outputs.ready != 'true'
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        targets: wasm32-unknown-unknown
+    - name: Install protoc
+      if: steps.web-runtime.outputs.ready != 'true'
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - name: Run sccache-cache
+      if: steps.web-runtime.outputs.ready != 'true'
+      uses: mozilla-actions/sccache-action@v0.0.9
+      with:
+        version: v0.18.0
+    - name: Cache cold web-build dependencies
+      if: steps.web-runtime.outputs.ready != 'true'
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: packages/actr-web -> ../../target/bindings-web
+        cache-bin: false
+        shared-key: cli-web-assets
+        prefix-key: ci15-20261112-v1-batch1
+    - name: Install pinned prebuilt WebAssembly tools
+      uses: ./.github/actions/install-wasm-tools
+      with:
+        wasm-pack-only: 'true'
+      if: steps.web-runtime.outputs.ready != 'true'
+    - name: Build CLI web runtime assets
+      if: steps.web-runtime.outputs.ready != 'true'
+      run: bash packages/actr-web/scripts/sync-cli-assets.sh --build
+    - name: Sync cached CLI web runtime assets
+      if: steps.web-runtime.outputs.ready == 'true'
+      run: bash packages/actr-web/scripts/sync-cli-assets.sh
+    - name: Verify Web runtime before uploading
+      run: |
+        for file in actr_sw_host_bg.wasm actr_sw_host.js actr_sw_host.d.ts package.json; do
+          test -s "packages/actr-web/dist/sw/$file" || { echo "Missing Web runtime output: $file" >&2; exit 1; }
+        done
+        bash packages/actr-web/scripts/sync-cli-assets.sh --check
+    - name: Upload CLI web runtime assets
+      uses: actions/upload-artifact@v4
+      with:
+        name: cli-web-runtime
+        path: |
+          crates/actr-cli/assets/web-runtime/actr_sw_host_bg.wasm
+          crates/actr-cli/assets/web-runtime/actr_sw_host.js
+        if-no-files-found: error
+        retention-days: 1
+    - name: Upload sw-host runtime assets
+      uses: actions/upload-artifact@v4
+      with:
+        name: sw-host-runtime
+        path: packages/actr-web/dist/sw/
+        if-no-files-found: error
+        retention-days: 1
+    - name: Disk usage at end
+      if: always()
+      run: df -h /; du -sh target 2>/dev/null || true
+  e2e_rust:
+    name: Rust E2E Compile
+    needs: determine
+    if: needs.determine.outputs.e2e_rust == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v5
+    - name: Prepare Linux build space
+      uses: ./.github/actions/prepare-linux-build
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        targets: wasm32-wasip2,wasm32-unknown-unknown
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: tests/e2e/actr -> ../target/e2e
+        prefix-key: ci15-20261112-v1-batch1
+    - name: Install native dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libopus-dev
+    - name: Resolve e2e workspace with the committed lockfile
+      working-directory: tests/e2e/actr
+      run: |
+        cargo metadata \
+          --format-version 1 \
+          --locked \
+          > "$RUNNER_TEMP/e2e-metadata.json"
+        python3 - "$RUNNER_TEMP/e2e-metadata.json" <<'PY'
+        import json
+        import pathlib
+        import sys
+
+        metadata = json.loads(pathlib.Path(sys.argv[1]).read_text())
+        registry_actr = [
+            package["name"]
+            for package in metadata["packages"]
+            if package["name"].startswith("actr") and package["source"] is not None
+        ]
+        if registry_actr:
+            raise SystemExit(
+                "e2e actr dependencies must resolve from local paths: "
+                + ", ".join(sorted(registry_actr))
+            )
+        PY
+    - name: Compile the Rust E2E workspace
+      working-directory: tests/e2e/actr
+      run: cargo check --workspace --locked
+    - name: Disk usage at end
+      if: always()
+      run: df -h /; du -sh target 2>/dev/null || true
+    env:
+      SCCACHE_GHA_VERSION: ci15-20261112-v1-batch1
+  e2e_package_runtime:
+    name: E2E Package Runtime
+    needs:
+    - determine
+    - cli_web_assets
+    if: needs.determine.outputs.e2e_package_runtime == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v5
+    - name: Prepare Linux build space
+      uses: ./.github/actions/prepare-linux-build
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        targets: wasm32-unknown-unknown
+    - name: Install Linux e2e dependencies
+      run: |
+        sudo rm -f /etc/apt/sources.list.d/google-chrome*
+        sudo apt-get update
+        sudo apt-get install -y jq sqlite3 lsof perl bubblewrap openssl
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - name: Install pinned prebuilt WebAssembly tools
+      uses: ./.github/actions/install-wasm-tools
+      with:
+        wasm-pack-only: 'true'
+    - name: Run sccache-cache
+      uses: mozilla-actions/sccache-action@v0.0.9
+      with:
+        version: v0.18.0
+    - uses: Swatinem/rust-cache@v2
+      with:
+        save-if: false
+        prefix-key: ci15-20261112-v1-batch1
+    - name: Download CLI web runtime assets
+      uses: actions/download-artifact@v4
+      with:
+        name: cli-web-runtime
+        path: crates/actr-cli/assets/web-runtime
+    - name: Sync CLI source assets
+      run: |
+        test -s crates/actr-cli/assets/web-runtime/actr_sw_host_bg.wasm
+        test -s crates/actr-cli/assets/web-runtime/actr_sw_host.js
+        bash packages/actr-web/scripts/sync-cli-assets.sh --skip-sw-host
+    - name: Verify Publisher signing-key isolation
+      run: python3 tests/e2e/actr/package-runtime-echo/test_runtime_isolation.py
+    - name: Verify HTTPS transport and certificate rejection
+      run: python3 tests/e2e/actr/package-runtime-echo/test_https_documents.py
+    - name: Run signed package runtime echo e2e
+      run: bash tests/e2e/actr/package-runtime-echo/run.sh
+    - name: Run provider and external domain Realms
+      run: bash tests/e2e/actr/package-runtime-echo/realm-matrix.sh
+    - name: Verify retired and revoked Publisher signing keys
+      run: MODE=rotation bash tests/e2e/actr/package-runtime-echo/run.sh
+    - name: Disk usage at end
+      if: always()
+      run: df -h /; du -sh target 2>/dev/null || true
+    env:
+      SCCACHE_GHA_VERSION: ci15-20261112-v1-batch1
+      RUSTC_WRAPPER: sccache
+      SCCACHE_GHA_ENABLED: 'true'
+  audit:
+    name: Dependency Audit
+    needs: determine
+    if: needs.determine.outputs.rust_core == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v5
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+    - name: Install cargo-audit
+      run: cargo install cargo-audit --version 0.22.2 --locked --force
+    - name: Audit Cargo.lock
+      run: cargo audit
+    - name: Disk usage at end
+      if: always()
+      run: df -h /; du -sh target 2>/dev/null || true
+    env:
+      SCCACHE_GHA_VERSION: ci15-20261112-v1-batch1
+  rust:
+    name: Rust
+    needs:
+    - determine
+    - cli_web_assets
+    if: needs.determine.outputs.rust_core == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+    env:
+      CARGO_TERM_COLOR: always
+      RUST_BACKTRACE: 1
+      RUSTUP_TOOLCHAIN: 1.99.0
+      ACTR_REQUIRE_WASM_FIXTURE: '1'
+      RUSTC_WRAPPER: sccache
+      SCCACHE_GHA_ENABLED: 'true'
+      SCCACHE_GHA_VERSION: ci15-20261112-v1-batch1
+    steps:
+    - uses: actions/checkout@v5
+    - name: Prepare Linux build space
+      uses: ./.github/actions/prepare-linux-build
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        components: rustfmt,clippy
+        targets: wasm32-wasip2,wasm32-unknown-unknown
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - name: Run sccache-cache
+      uses: mozilla-actions/sccache-action@v0.0.9
+      with:
+        version: v0.18.0
+    - name: OTel payload-logging guard
+      run: bash .github/workflows/scripts/check-payload-logging.sh
+    - name: Test mobile Issuer fixture on a non-Unix target
+      run: python3 scripts/actr/tests/test_mobile_fixture_cfg.py
+    - name: Install native build dependencies
+      run: |
+        if ! command -v pkg-config >/dev/null 2>&1 || ! pkg-config --exists openssl || ! command -v cmake >/dev/null 2>&1; then
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libssl-dev cmake
+        fi
+    - name: Verify actr-hyper WIT drift
+      run: |
+        cmp crates/actr-framework/wit-v2/actr-workload.wit crates/actr-hyper/wit-v2/actr-workload.wit
+    - name: Install pinned prebuilt WebAssembly tools
+      uses: ./.github/actions/install-wasm-tools
+    - name: Download CLI web runtime assets
+      uses: actions/download-artifact@v4
+      with:
+        name: cli-web-runtime
+        path: crates/actr-cli/assets/web-runtime
+    - name: Sync CLI source assets
+      run: |
+        test -s crates/actr-cli/assets/web-runtime/actr_sw_host_bg.wasm
+        test -s crates/actr-cli/assets/web-runtime/actr_sw_host.js
+        bash packages/actr-web/scripts/sync-cli-assets.sh --skip-sw-host
+    - name: Check formatting
+      run: cargo fmt --all -- --check
+    - name: Test Rust protoc plugin well-known types
+      run: cargo test -p actr-framework-protoc-codegen --test well_known_type_smoke
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Verify upstream dependency overrides
+      run: |
+        python3 scripts/actr/check-upstream-patches.py
+        python3 scripts/actr/tests/test_apply_upstream_patches.py
+    - name: Check committed Kotlin binding checksums against the native library
+      run: |
+        cargo build -p libactr
+        python3 scripts/actr/check-binding-checksums.py \
+          --library target/debug/libactr.so \
+          --binding packages/actr-kotlin/actr-kotlin/src/main/kotlin/io/actrium/actr/actr.kt
+    - name: Clippy (deny warnings)
+      env:
+        CARGO_BUILD_WARNINGS: deny
+      run: cargo +1.99.0 clippy --workspace --all-targets --all-features
+    - name: Disk usage at end
+      if: always()
+      run: df -h /; du -sh target 2>/dev/null || true
+  test:
+    name: Test (Rust, ${{ matrix.shard }})
+    needs:
+    - determine
+    - cli_web_assets
+    if: needs.determine.outputs.rust_core == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        shard:
+        - realtime
+        - rest
+    env:
+      CARGO_TERM_COLOR: always
+      RUST_BACKTRACE: 1
+      ACTR_REQUIRE_WASM_FIXTURE: '1'
+      ACTR_REQUIRE_NON_LOOPBACK_IPV4: '1'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+      RUSTC_WRAPPER: sccache
+      SCCACHE_GHA_ENABLED: 'true'
+      REALTIME_BINARIES: binary(mobile_rtc_pair_contract) | binary(mobile_rtc_multi_peer) | (package(actr-hyper) and test(/^connection_governance_matrix::/)) | (package(actr-hyper) and test(/^connection_governance_production::/)) | (package(actr-hyper) and test(/^connection_governance_inflight::/)) | binary(recovery_attempt_timer) | binary(webrtc_large_mobile_recovery) | binary(mobile_full_disconnect_recovery) | binary(mobile_network_event_scenarios) | binary(ice_restart) | binary(ice_restart_with_signaling_disruption) | binary(ice_restart_unilateral_outage) | binary(turn_credential_rotation) | binary(webrtc_large_data_transfer) | binary(webrtc_initial_connection_timeout) | binary(media_loopback) | binary(dynclib_actor_e2e) | binary(rust_echo) | binary(outproc_disconnect_reconnect) | binary(outproc_connection_rebuild) | binary(recovery_vnet_supervisor) | binary(mock_loran_integration)
+      SCCACHE_GHA_VERSION: ci15-20261112-v1-batch1
+    steps:
+    - uses: actions/checkout@v5
+    - name: Prepare Linux build space
+      uses: ./.github/actions/prepare-linux-build
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        components: rust-src
+        targets: wasm32-wasip2,wasm32-unknown-unknown
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - name: Verify actr-hyper WIT drift
+      run: |
+        cmp crates/actr-framework/wit-v2/actr-workload.wit crates/actr-hyper/wit-v2/actr-workload.wit
+    - uses: Swatinem/rust-cache@v2
+      with:
+        cache-targets: false
+        save-if: ${{ matrix.shard == 'rest' }}
+        prefix-key: ci15-20261112-v1-batch1
+    - name: Run sccache-cache
+      uses: mozilla-actions/sccache-action@v0.0.9
+      with:
+        version: v0.18.0
+    - name: Install pinned prebuilt WebAssembly tools
+      uses: ./.github/actions/install-wasm-tools
+    - name: Download CLI web runtime assets
+      uses: actions/download-artifact@v4
+      with:
+        name: cli-web-runtime
+        path: crates/actr-cli/assets/web-runtime
+    - name: Sync CLI source assets
+      run: |
+        test -s crates/actr-cli/assets/web-runtime/actr_sw_host_bg.wasm
+        test -s crates/actr-cli/assets/web-runtime/actr_sw_host.js
+        bash packages/actr-web/scripts/sync-cli-assets.sh --skip-sw-host
+    - name: Install cargo-nextest
+      uses: taiki-e/install-action@cargo-nextest
+    - name: Build rest test inventory and verify RFC-0507 acceptance
+      if: matrix.shard == 'rest'
+      run: |
+        cargo metadata --format-version 1 --all-features --locked \
+          > "$RUNNER_TEMP/nextest-rest-cargo.json"
+        cargo nextest list --workspace --all-features \
+          --list-type binaries-only --message-format json \
+          > "$RUNNER_TEMP/nextest-rest-binaries.json"
+        cargo nextest list \
+          --cargo-metadata "$RUNNER_TEMP/nextest-rest-cargo.json" \
+          --binaries-metadata "$RUNNER_TEMP/nextest-rest-binaries.json" \
+          -E "not($REALTIME_BINARIES)" --message-format json \
+          > "$RUNNER_TEMP/nextest-rest-tests.json"
+        python3 - "$RUNNER_TEMP/nextest-rest-tests.json" <<'PY'
+        import json
+        import sys
+
+        acceptance = "outbound::peer_gate::websocket_tests::live_websocket_partial_write_is_uncertain_without_replay"
+        with open(sys.argv[1]) as source:
+            inventory = json.load(source)
+        selected = []
+        for suite in inventory["rust-suites"].values():
+            if suite["package-name"] != "actr-hyper" or suite["kind"] != "lib":
+                continue
+            case = suite.get("testcases", {}).get(acceptance)
+            if case and not case["ignored"] and case["filter-match"]["status"] == "matches":
+                selected.append(suite["binary-id"])
+        if len(selected) != 1:
+            raise SystemExit("RFC-0507 acceptance must be selected exactly once in the rest shard")
+        print(f"RFC-0507 acceptance selected in {selected[0]}; the rest suite runs it without retries")
+        PY
+
+        python3 .github/scripts/assert-ci15-timer.py "$RUNNER_TEMP/nextest-rest-tests.json"
+    - name: Run tests (nextest, ${{ matrix.shard }} shard)
+      run: |
+        if [ "${{ matrix.shard }}" = realtime ]; then
+          cargo nextest run --workspace --all-features --no-fail-fast -E "$REALTIME_BINARIES"
+        else
+          cargo nextest run \
+            --cargo-metadata "$RUNNER_TEMP/nextest-rest-cargo.json" \
+            --binaries-metadata "$RUNNER_TEMP/nextest-rest-binaries.json" \
+            --no-fail-fast -E "not($REALTIME_BINARIES)"
+        fi
+    - name: Run doctests
+      if: matrix.shard == 'rest'
+      run: cargo test --doc --workspace --all-features
+    - name: sccache stats
+      if: always()
+      run: sccache --show-stats || true
+    - name: Disk usage at end
+      if: always()
+      run: df -h /; du -sh target 2>/dev/null || true
+  rust_msrv:
+    name: Rust MSRV (1.95)
+    needs:
+    - determine
+    - cli_web_assets
+    if: needs.determine.outputs.rust_core == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+    env:
+      CARGO_TERM_COLOR: always
+      RUST_BACKTRACE: 1
+      ACTR_REQUIRE_WASM_FIXTURE: '1'
+      RUSTC_WRAPPER: sccache
+      SCCACHE_GHA_ENABLED: 'true'
+      SCCACHE_GHA_VERSION: ci15-20261112-v1-batch1
+    steps:
+    - uses: actions/checkout@v5
+    - name: Prepare Linux build space
+      uses: ./.github/actions/prepare-linux-build
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - name: Run sccache-cache
+      uses: mozilla-actions/sccache-action@v0.0.9
+      with:
+        version: v0.18.0
+    - name: Setup Rust (MSRV)
+      uses: dtolnay/rust-toolchain@1.95.0
+      with:
+        targets: wasm32-wasip2,wasm32-unknown-unknown
+    - name: Clear repository Rust toolchain override
+      run: rustup override unset || true
+    - name: Install native build dependencies
+      run: |
+        if ! command -v pkg-config >/dev/null 2>&1 || ! pkg-config --exists openssl || ! command -v cmake >/dev/null 2>&1; then
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libssl-dev cmake
+        fi
+    - name: Install pinned prebuilt WebAssembly tools
+      uses: ./.github/actions/install-wasm-tools
+    - name: Download CLI web runtime assets
+      uses: actions/download-artifact@v4
+      with:
+        name: cli-web-runtime
+        path: crates/actr-cli/assets/web-runtime
+    - name: Sync CLI source assets
+      run: |
+        test -s crates/actr-cli/assets/web-runtime/actr_sw_host_bg.wasm
+        test -s crates/actr-cli/assets/web-runtime/actr_sw_host.js
+        bash packages/actr-web/scripts/sync-cli-assets.sh --skip-sw-host
+    - name: Build at MSRV (locked)
+      run: cargo build --workspace --all-targets --all-features --locked
+    - name: Disk usage at end
+      if: always()
+      run: df -h /; du -sh target 2>/dev/null || true
+  typescript:
+    name: TypeScript
+    needs: determine
+    if: needs.determine.outputs.ts_binding == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v5
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: packages/actr-typescript -> ../../target/bindings-typescript
+        prefix-key: ci15-20261112-v1-batch1
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+        cache: npm
+        cache-dependency-path: |
+          packages/actr-typescript/package.json
+          tools/actr/protoc-gen/typescript/package-lock.json
+    - name: Install dependencies
+      working-directory: packages/actr-typescript
+      run: npm install
+    - name: Check formatting
+      working-directory: packages/actr-typescript
+      run: npm run format
+    - name: Run lint
+      working-directory: packages/actr-typescript
+      run: npm run lint
+    - name: Build
+      working-directory: packages/actr-typescript
+      run: npm run build
+    - name: Run unit tests
+      working-directory: packages/actr-typescript
+      run: npm test
+    - name: Test TypeScript protoc plugin
+      working-directory: tools/actr/protoc-gen/typescript
+      run: |
+        npm ci
+        npm test
+    - name: Cargo check
+      working-directory: packages/actr-typescript
+      run: cargo check --locked --manifest-path Cargo.toml
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Verify upstream dependency overrides
+      run: python3 scripts/actr/check-upstream-patches.py --manifest packages/actr-typescript/Cargo.toml --client-only
+    - name: Disk usage at end
+      if: always()
+      run: df -h /; du -sh target 2>/dev/null || true
+    env:
+      SCCACHE_GHA_VERSION: ci15-20261112-v1-batch1
+  swift:
+    name: Swift
+    needs: determine
+    if: needs.determine.outputs.swift_binding == 'true'
+    runs-on: macos-latest
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v5
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        targets: aarch64-apple-darwin
+    - uses: Swatinem/rust-cache@v2
+      with:
+        prefix-key: ci15-20261112-v1-batch1
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - name: Cache uniffi-bindgen binary
+      id: cache-uniffi
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/bin/uniffi-bindgen*
+        key: ci15-20261112-v1-batch1-uniffi-bindgen-0.31.1-${{ runner.os }}-${{ runner.arch }}
+    - name: Install UniFFI bindgen
+      if: steps.cache-uniffi.outputs.cache-hit != 'true'
+      run: |
+        # Swatinem/rust-cache may already restore ~/.cargo/bin/uniffi-bindgen
+        # from a prior run with a different key; skip the install when the
+        # binary is present so the unguarded `cargo install` doesn't abort
+        # with "binary already exists in destination".
+        if ! command -v uniffi-bindgen >/dev/null 2>&1; then
+          cargo install --locked uniffi --version 0.31.1 --features cli --bin uniffi-bindgen
+        fi
+    - name: Install Swift tools and libraries
+      run: brew install swiftlint opus
+    - name: Run SwiftLint
+      run: swiftlint lint --strict
+    - name: Check actr-cabi header sync
+      run: git diff --no-index --exit-code -- crates/actr-cabi/actr-cabi.h packages/actr-cabi/swift/Sources/ActrCabi/include/actr-cabi.h
+    - name: Type-check actr-cabi Swift wrapper
+      run: swiftc -typecheck -swift-version 6 -I packages/actr-cabi/swift/Sources/ActrCabi/include packages/actr-cabi/swift/Sources/ActrCabi/ActrCabi.swift
+    - name: Build local Swift XCFramework
+      working-directory: packages/actr-swift
+      env:
+        ACTR_BUILD_PROFILE: debug
+        ACTR_XCFRAMEWORK_TARGETS: macos
+        CMAKE_POLICY_VERSION_MINIMUM: '3.5'
+      run: |
+        ./build-xcframework.sh
+    - name: Build Swift bindings package
+      working-directory: packages/actr-swift
+      run: |
+        swift build
+    - name: Pre-build mock-loran
+      run: cargo build -p actr-mock-loran --bin mock-loran
+    - name: Test Swift bindings package
+      working-directory: packages/actr-swift
+      env:
+        ACTR_SWIFT_E2E: '1'
+      run: |
+        ../../target/debug/mock-loran --port 8081 > "$RUNNER_TEMP/mock-loran.log" 2>&1 &
+        mock_pid="$!"
+        trap 'kill "$mock_pid" || true' EXIT
+        for _ in {1..60}; do
+          if grep -q "mock-loran listening" "$RUNNER_TEMP/mock-loran.log"; then
+            cat "$RUNNER_TEMP/mock-loran.log"
+            break
+          fi
+          if ! kill -0 "$mock_pid" 2>/dev/null; then
+            cat "$RUNNER_TEMP/mock-loran.log"
+            exit 1
+          fi
+          sleep 1
+        done
+        if ! grep -q "mock-loran listening" "$RUNNER_TEMP/mock-loran.log"; then
+          cat "$RUNNER_TEMP/mock-loran.log"
+          exit 1
+        fi
+        ACTR_BINDINGS_PATH=dist/ActrBindings \
+        ACTR_BINARY_PATH=dist/ActrFFI.xcframework \
+        swift test
+    - name: Build Swift codegen package
+      working-directory: tools/actr/protoc-gen/swift
+      run: swift build
+    - name: Disk usage at end
+      if: always()
+      run: df -h /; du -sh target 2>/dev/null || true
+    env:
+      SCCACHE_GHA_VERSION: ci15-20261112-v1-batch1
+  csharp:
+    name: C#
+    needs: determine
+    if: needs.determine.outputs.csharp_binding == 'true'
+    uses: ./.github/workflows/ci-csharp.yml
+  web:
+    name: Web
+    needs:
+    - determine
+    - cli_web_assets
+    if: needs.determine.outputs.web_binding == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      CARGO_TERM_COLOR: always
+      RUST_BACKTRACE: 1
+      SCCACHE_GHA_VERSION: ci15-20261112-v1-batch1
+    steps:
+    - uses: actions/checkout@v5
+    - name: Prepare Linux build space
+      uses: ./.github/actions/prepare-linux-build
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        components: rustfmt
+        targets: wasm32-wasip2,wasm32-unknown-unknown
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: packages/actr-web -> ../../target/bindings-web
+        prefix-key: ci15-20261112-v1-batch1
+    - name: Check formatting
+      working-directory: packages/actr-web
+      run: cargo fmt --all -- --check
+    - name: Check web workspace
+      working-directory: packages/actr-web
+      run: cargo check --workspace --target wasm32-unknown-unknown --locked
+    - name: WIT codegen drift gate (Option U)
+      run: cargo run -p actr-wit-compile-web -- --check
+    - name: Download sw-host runtime assets
+      uses: actions/download-artifact@v4
+      with:
+        name: sw-host-runtime
+        path: packages/actr-web/dist/sw
+    - name: Verify sw-host runtime assets
+      run: |
+        test -s packages/actr-web/dist/sw/actr_sw_host_bg.wasm
+        test -s packages/actr-web/dist/sw/actr_sw_host.js
+        test -s packages/actr-web/dist/sw/actr_sw_host.d.ts
+        test -s packages/actr-web/dist/sw/package.json
+    - name: crates/actr-cli/assets sync drift gate
+      run: bash packages/actr-web/scripts/sync-cli-assets.sh --check --skip-sw-host
+    - name: Run web-sdk unit tests (vitest)
+      working-directory: packages/actr-web
+      env:
+        PUPPETEER_SKIP_DOWNLOAD: 'true'
+        PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: 'true'
+      run: |
+        corepack enable
+        corepack prepare pnpm@9.15.9 --activate
+        pnpm install --frozen-lockfile
+        # Build the SDK (and its @actrium/actr-dom dependency, whose
+        # type declarations the SDK build consumes) so the test asserts
+        # the published dist service-worker bytes, not just the sources.
+        pnpm --filter @actrium/actr-dom run build
+        pnpm --filter @actrium/actr-web run build
+        # `pnpm exec` fails when the filter matches no project, so a
+        # removed/renamed web-sdk cannot silently turn this into a green
+        # no-op; `vitest run` fails when no test files are found.
+        pnpm --filter @actrium/actr-web exec vitest run
+    - name: Disk usage at end
+      if: always()
+      run: df -h /; du -sh target 2>/dev/null || true
+  webrtc:
+    name: WebRTC
+    needs: determine
+    if: needs.determine.outputs.rust_core == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      CARGO_TERM_COLOR: always
+      RUST_BACKTRACE: 1
+      RUSTUP_TOOLCHAIN: 1.99.0
+      SCCACHE_GHA_VERSION: ci15-20261112-v1-batch1
+    steps:
+    - uses: actions/checkout@v5
+    - name: Prepare Linux build space
+      uses: ./.github/actions/prepare-linux-build
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@1.99.0
+      with:
+        components: clippy
+        targets: wasm32-wasip2,wasm32-unknown-unknown
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ github.token }}
+        version: ${{ vars.PROTOC_VERSION || '29.3' }}
+    - uses: Swatinem/rust-cache@v2
+      with:
+        cache-targets: false
+        prefix-key: ci15-20261112-v1-batch1
+    - name: Install pinned prebuilt WebAssembly tools
+      uses: ./.github/actions/install-wasm-tools
+    - name: Install cargo-nextest
+      uses: taiki-e/install-action@cargo-nextest
+    - name: Check (WebRTC)
+      run: cargo check -p actr-hyper --all-targets
+    - name: Clippy (WebRTC, deny warnings)
+      env:
+        CARGO_BUILD_WARNINGS: deny
+      run: cargo +1.99.0 clippy -p actr-hyper --all-targets
+    - name: Test (WebRTC)
+      run: cargo nextest run -p actr-hyper -E 'test(/^wire::webrtc::rtc/)' --no-fail-fast
+    - name: Disk usage at end
+      if: always()
+      run: df -h /; du -sh target 2>/dev/null || true
+  cjk:
+    name: Language Policy
+    runs-on: ubuntu-24.04
+    if: always()
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Check default-language content and portable paths
+      run: python .github/scripts/check_cjk.py
+    - name: Reject retired package protocol identifiers
+      run: |
+        python3 scripts/actrium/check_retired_protocol_names_test.py
+        scripts/actrium/check-retired-protocol-names.sh
+    - name: Disk usage at end
+      if: always()
+      run: df -h /; du -sh target 2>/dev/null || true
+    env:
+      SCCACHE_GHA_VERSION: ci15-20261112-v1-batch1
+  gate:
+    name: Gate
+    runs-on: ubuntu-24.04
+    if: always()
+    needs:
+    - identity
+    - determine
+    - cli_web_assets
+    - e2e_rust
+    - e2e_package_runtime
+    - audit
+    - rust
+    - typescript
+    - swift
+    - csharp
+    - web
+    - test
+    - webrtc
+    - cjk
+    env:
+      MODE: ${{ needs.determine.outputs.mode }}
+      IDENTITY_RESULT: ${{ needs.identity.result }}
+      CHANGED_FILES_JSON: ${{ needs.determine.outputs.changed_files_json }}
+      REASONS_JSON: ${{ needs.determine.outputs.reasons_json }}
+      RUST_RESULT: ${{ needs.rust.result }}
+      AUDIT_RESULT: ${{ needs.audit.result }}
+      TYPESCRIPT_RESULT: ${{ needs.typescript.result }}
+      SWIFT_RESULT: ${{ needs.swift.result }}
+      CSHARP_RESULT: ${{ needs.csharp.result }}
+      WEB_RESULT: ${{ needs.web.result }}
+      CLI_WEB_ASSETS_RESULT: ${{ needs.cli_web_assets.result }}
+      E2E_RUST_RESULT: ${{ needs.e2e_rust.result }}
+      E2E_PACKAGE_RUNTIME_RESULT: ${{ needs.e2e_package_runtime.result }}
+      TEST_RESULT: ${{ needs.test.result }}
+      WEBRTC_RESULT: ${{ needs.webrtc.result }}
+      CJK_RESULT: ${{ needs.cjk.result }}
+      TYPESCRIPT_WORKLOAD_RESULT: skipped
+      PYTHON_CODEGEN_RESULT: skipped
+      PYTHON_WORKLOAD_RESULT: skipped
+      KOTLIN_RESULT: skipped
+      C_GO_WORKLOADS_RESULT: skipped
+      SCCACHE_GHA_VERSION: ci15-20261112-v1-batch1
+    steps:
+    - name: Summarize gate
+      run: |
+        python3 - <<'PY'
+        import json
+        import os
+        import sys
+
+        results = {
+            "identity": os.environ["IDENTITY_RESULT"],
+            "audit": os.environ["AUDIT_RESULT"],
+            "rust": os.environ["RUST_RESULT"],
+            "typescript": os.environ["TYPESCRIPT_RESULT"],
+            "typescript_workload": os.environ["TYPESCRIPT_WORKLOAD_RESULT"],
+            "python_codegen": os.environ["PYTHON_CODEGEN_RESULT"],
+            "python_workload": os.environ["PYTHON_WORKLOAD_RESULT"],
+            "swift": os.environ["SWIFT_RESULT"],
+            "kotlin": os.environ["KOTLIN_RESULT"],
+            "csharp": os.environ["CSHARP_RESULT"],
+            "web": os.environ["WEB_RESULT"],
+            "c_go_workloads": os.environ["C_GO_WORKLOADS_RESULT"],
+            "cli_web_assets": os.environ["CLI_WEB_ASSETS_RESULT"],
+            "e2e_rust": os.environ["E2E_RUST_RESULT"],
+            "e2e_package_runtime": os.environ["E2E_PACKAGE_RUNTIME_RESULT"],
+            "test": os.environ["TEST_RESULT"],
+            "webrtc": os.environ["WEBRTC_RESULT"],
+            "cjk": os.environ["CJK_RESULT"],
+        }
+
+        changed_files = json.loads(os.environ["CHANGED_FILES_JSON"])
+        reasons = json.loads(os.environ["REASONS_JSON"])
+        mode = os.environ["MODE"]
+
+        summary_lines = [
+            "## CI Gate",
+            "",
+            f"- Mode: `{mode}`",
+            f"- Changed files: `{len(changed_files)}`",
+            "",
+            "### Domain Results",
+        ]
+        summary_lines.extend([f"- `{name}`: `{result}`" for name, result in results.items()])
+
+        if reasons:
+            summary_lines.append("")
+            summary_lines.append("### Trigger Reasons")
+            summary_lines.extend([f"- `{reason}`" for reason in reasons])
+
+        if changed_files:
+            summary_lines.append("")
+            summary_lines.append("### Changed Files")
+            summary_lines.extend([f"- `{path}`" for path in changed_files])
+
+        if os.environ.get("GITHUB_STEP_SUMMARY"):
+            with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as fh:
+                fh.write("\n".join(summary_lines) + "\n")
+
+        failed = [name for name, result in results.items() if result not in {"success", "skipped"}]
+        if failed:
+            print(f"CI gate failed because these domains did not pass: {', '.join(failed)}", file=sys.stderr)
+            sys.exit(1)
+        PY
+    - name: Disk usage at end
+      if: always()
+      run: df -h /; du -sh target 2>/dev/null || true
