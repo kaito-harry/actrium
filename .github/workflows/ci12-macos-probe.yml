@@ -16,3 +16,15 @@ jobs:
           sw_vers
           xcodebuild -version
           uname -m
+  windows-probe:
+    name: Probe ${{ matrix.runner }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [windows-latest, windows-2022]
+    steps:
+      - name: Record runner environment
+        shell: pwsh
+        run: |
+          Get-ComputerInfo | Select-Object OsName, OsVersion, OsArchitecture
