@@ -690,7 +690,7 @@ jobs:
       ACTR_REQUIRE_WASM_FIXTURE: '1'
       RUSTC_WRAPPER: sccache
       SCCACHE_GHA_ENABLED: ${{ contains(github.ref_name, 'ci15-combined-candidate-') && 'false' || 'true' }}
-      SCCACHE_DIR: ${{ runner.temp }}/ci12-msrv-sccache
+      SCCACHE_DIR: /tmp/ci12-msrv-sccache
       SCCACHE_CACHE_SIZE: 1G
     steps:
     - uses: actions/checkout@v5
@@ -710,7 +710,7 @@ jobs:
       if: contains(github.ref_name, 'ci15-combined-candidate-')
       uses: actions/cache@v4
       with:
-        path: ${{ runner.temp }}/ci12-msrv-sccache
+        path: /tmp/ci12-msrv-sccache
         key: ${{ env.CI15_CACHE }}-msrv-sccache-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock', '**/Cargo.toml') }}
     - name: Run sccache-cache
       uses: mozilla-actions/sccache-action@v0.0.9
