@@ -1,0 +1,9 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createInspector} from './live-inspector.mjs';
+const pr={number:450,state:'open',draft:false,user:{login:'alinejun',type:'User'},head:{sha:'a'.repeat(40),ref:'feature'},base:{repo:{full_name:'Actrium/actrium'}},requested_reviewers:[{login:'kaito-harry'}],title:'feature'};
+function api(handler) {return {mcp__codex_apps__github_fetch:async({url})=>({structuredContent:{content:JSON.stringify(handler(url))}})};}
+test('inspector fully pages timeline and includes author replies',async()=>{let second=false;const inspect=createInspector(api(url=>{if(url.endsWith('/pulls/450'))return pr;if(url.includes('/timeline')){if(url.includes('page=2')){second=true;return [{id:101,event:'review_requested',requested_reviewer:{login:'kaito-harry'},created_at:'2026-11-16T02:36:40Z'}]}return Array.from({length:100},(_,id)=>({id,event:'committed'}));}if(url.includes('/pulls/450/comments'))return [{id:10,user:{login:'alinejun'},body:'fixed',in_reply_to_id:1}];return [];}));const s=await inspect(450);assert.equal(s.requestEventId,'101');assert.equal(s.inlineComments[0].body,'fixed');assert.equal(second,true);});
+test('repeated page is closed, not truncated success',async()=>{const inspect=createInspector(api(url=>url.endsWith('/pulls/450')?pr:Array.from({length:100},(_,id)=>({id}))));await assert.rejects(()=>inspect(450),/repeated page/);});
+test('provider failure cannot be interpreted as empty',async()=>{await assert.rejects(()=>createInspector({mcp__codex_apps__github_fetch:async()=>({isError:true,structuredContent:{error:'rate limit'}})})(450),/rate limit/);});
+test('head changed mid-inspection is blocked',async()=>{let n=0;const inspect=createInspector(api(url=>url.endsWith('/pulls/450')?{...pr,head:{...pr.head,sha:((++n===1)?'a':'b').repeat(40)}}:[]));await assert.rejects(()=>inspect(450),/changed/);});
