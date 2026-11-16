@@ -36,3 +36,9 @@ Run `node --test test.mjs`: 10 passed, including 50 independent simulated worker
 
 ## Remaining acceptance gates
 The adapter and gate are NOT by themselves a deployed automated reviewer. Full live inspector integration, verification of timeline/review pagination, production trigger integration, and explicit handling/reporting of same-head re-request/manual recovery remain. Do not enable unattended posting merely because the unit tests pass.
+
+
+## Follow-up verification 2026-11-16
+`live-inspector.mjs` now implements paginated raw GitHub REST reads via github.fetch: PR metadata twice, issue timeline, reviews, issue comments, and inline comments. It checks metadata stability and rejects malformed/incomplete responses, repeated pages, excessive pages, or provider errors. It ran against PR #450: head 59a07ef79edb72d74d088842336e6fdc27f279b9, request event 36231522413, 10 timeline entries, 4 reviews, 2 inline comments including the author reply, 0 issue comments. Current requested_reviewers was empty after another executor posted approval 5914539449 at 02:58:44Z with marker actrium-review-v3. A read-only end-to-end gate check returned ineligible with ZERO claim/submit calls.
+
+The earlier missing-inspector gate is now resolved for this provider shape; 14 tests pass including pagination, repeated-page rejection, rate-limit failure and metadata races. Full unattended deployment remains BLOCKED because an uncoordinated external submission source is unidentified. Local macOS current process/launchd/native-automation/task inspection did not identify it; that negative search does not exclude prior processes or another server. Do not enable a second submitter until that source is accounted for. The cloud Dot automation was independently confirmed by root as read-only and Gmail review disabled.
