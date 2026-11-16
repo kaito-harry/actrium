@@ -29,6 +29,8 @@ export function createInspector(tools) {
     const first=await get(`pulls/${pr}`); const firstIdentity=identity(first);
     const timeline=await all(`issues/${pr}/timeline`);
     const reviews=await all(`pulls/${pr}/reviews`);
+    const inlineComments=await all(`pulls/${pr}/comments`);
+    const issueComments=await all(`issues/${pr}/comments`);
     const last=await get(`pulls/${pr}`);
     if(identity(last)!==firstIdentity) throw Error('PR changed during inspection');
     const requests=timeline.filter(x=>x.event==='review_requested'&&x.requested_reviewer?.login===POLICY.reviewer);
@@ -38,7 +40,7 @@ export function createInspector(tools) {
     const release=pr===352 || /^(release-please|dependabot)/i.test(last.user.login) || last.user.type==='Bot' || /^release(?:[-/ ]|$)/i.test(last.head.ref) || /^(?:chore(?:\([^)]*\))?:\s*)?release(?:\b|\()/i.test(last.title);
     return {repository:POLICY.repo,pr,head:last.head.sha,open:last.state==='open',draft:last.draft,author:last.user.login,requestedReviewers:last.requested_reviewers.map(x=>x.login),requestEventId:event?String(event.id):null,requestCreatedAt:event?.created_at??null,release,
       reviews:reviews.map(r=>{if(!r.id||!r.user?.login||!r.commit_id||!r.state) throw Error('incomplete review');return {id:r.id,author:r.user.login,head:r.commit_id,state:r.state.toUpperCase(),body:r.body??'',submittedAt:r.submitted_at};}),
-      discussion:timeline.filter(x=>['commented','reviewed'].includes(x.event)),
-      provenance:{timelineCount:timeline.length,reviewCount:reviews.length,paginationComplete:true,stableMetadataRead:true}};
+      discussion:timeline.filter(x=>['commented','reviewed'].includes(x.event)), inlineComments, issueComments,
+      provenance:{timelineCount:timeline.length,reviewCount:reviews.length,inlineCommentCount:inlineComments.length,issueCommentCount:issueComments.length,paginationComplete:true,stableMetadataRead:true}};
   };
 }
