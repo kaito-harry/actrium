@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "kind": "probe-only",
+  "autoSubmissionEnabled": false,
+  "verified": "two concurrent create-only reference calls: one created, one rejected 422",
+  "createdAt": "2026-11-16",
+  "scope": "No review/comment submission; no main changes"
+}
