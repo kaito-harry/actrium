@@ -1488,6 +1488,7 @@ test_report_stage_merges_state_files() {
   printf 'actr-protocol\tfoundation\tcrate\t1.2.3\tpublished\tpublished\t-\t-\n' >"$REPORT_DIR/release-train-v1.2.3.publish-rust.state.tsv"
   printf 'framework_codegen_python\tprotoc-gen\tpython\t1.2.3\tpublished\tpublished\t-\t-\n' >"$REPORT_DIR/release-train-v1.2.3.publish-python.state.tsv"
   printf 'ActrSharp\tsdk\tnuget\t1.2.3\tsuccess\tpublished\t-\tabc123\n' >"$REPORT_DIR/release-train-v1.2.3.publish-actrsharp.state.tsv"
+  printf 'Actrium macOS arm64 DMG\tpublish-actrium-macos\tbinary\t1.2.3\tfailure\tpublish\t-\tabc123\n' >"$REPORT_DIR/release-train-v1.2.3.publish-actrium-macos.state.tsv"
 
   # Create a context file.
   cat >"$REPORT_DIR/release-train-v1.2.3.context.json" <<EOF
@@ -1510,11 +1511,22 @@ EOF
 
   local line_count
   line_count=$(wc -l < "$STATE_FILE" | tr -d ' ')
-  if [[ "$line_count" -ne 3 ]]; then
-    printf 'merged state file must contain 3 rows, got %s\n' "$line_count" >&2
+  if [[ "$line_count" -ne 4 ]]; then
+    printf 'merged state file must contain 4 rows, got %s\n' "$line_count" >&2
     rm -rf "$temp_dir"
     exit 1
   fi
+
+  python3 - "$REPORT_JSON" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1]) as stream:
+    report = json.load(stream)
+assert report["overall_status"] == "failure"
+assert any(component["stage"] == "publish-actrium-macos" and component["status"] == "failure"
+           for component in report["components"])
+PY
 
   rm -rf "$temp_dir"
 }

@@ -249,6 +249,9 @@ if state_path.exists():
             }
         )
 
+if any(row["status"] == "failure" for row in rows):
+    overall_status = "failure"
+
 payload = {
     "version": version,
     "run_mode": run_mode,
