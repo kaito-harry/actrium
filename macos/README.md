@@ -76,8 +76,8 @@ must allow the workflow's `GITHUB_TOKEN` to write contents and releases.
 
 The workflow resolves **your repository's `main`** once and checks out that
 full SHA, even when another workflow branch is selected. Its tag is
-`actrium-` followed by the first **12** hexadecimal characters of that SHA,
-for example `actrium-a1b2c3d4e5f6`. It builds an unsigned Release app on an
+`actrium-` followed by the first **8** hexadecimal characters of that SHA,
+for example `actrium-a1b2c3d4`. It builds an unsigned Release app on an
 Apple Silicon macOS 26 runner with Xcode 26.1, including the minified production
 JavaScript bundle, local ActriumCore/ActriumVault XCFrameworks, and the Actr
 Swift bindings/XCFramework used by the browser's Realm features. These are
@@ -102,12 +102,13 @@ link, and platform requirements. Reruns update the managed build-information
 section while retaining other snapshot notes.
 
 For a missing or damaged attachment, select `existing-tag` and enter a tag
-whose GitHub Release already exists. Supported tags are `actrium-<12 hex
+whose GitHub Release already exists. Supported tags are `actrium-<8 hex
 characters>` and `vX.Y.Z` (optionally with a prerelease suffix, such as
 `v0.10.7-rc.1`; the `v` is optional). Both lightweight and annotated tags are
 resolved to a pinned commit. Versioned releases use the tag's numeric version
 and keep their existing notes, prerelease status, and Latest status. This mode
-never creates a missing tag or release.
+never creates a missing tag or release. Previously published snapshots with
+12-character SHA suffixes remain supported by `existing-tag`.
 
 Both paths call `.github/workflows/_actrium-macos-release.yml`; they do not
 invoke SDK, CLI, or Loran publishing. Release Train calls that same reusable
