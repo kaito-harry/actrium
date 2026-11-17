@@ -21,12 +21,17 @@ on:
         description: Validation-only source SHA for a second-commit snapshot; empty uses main.
         type: string
         required: false
+      promote_verified_artifact:
+        description: QA only - publish the verified new-main build from run 44059384011.
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   resolve:
+    if: ${{ !inputs.promote_verified_artifact }}
     name: Pin release source
     runs-on: ubuntu-24.04
     permissions:
@@ -79,6 +84,7 @@ jobs:
           gh release upload "$QA_TAG" KEEP.txt --repo "$GITHUB_REPOSITORY" --clobber
 
   release:
+    if: ${{ !inputs.promote_verified_artifact }}
     name: Package and publish browser
     needs: resolve
     permissions:
@@ -90,3 +96,44 @@ jobs:
       app_version: ${{ needs.resolve.outputs.app_version }}
       publish: ${{ github.event_name == 'push' || inputs.publish }}
       create_snapshot: ${{ github.event_name == 'push' || inputs.mode == 'snapshot' }}
+
+  promote:
+    name: Publish verified new-main artifact
+    if: inputs.promote_verified_artifact
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 44059384011
+          name: actrium-macos-actrium-2f7c5eb20ea2
+          path: artifacts
+      - name: Validate the completed build provenance
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import runpy
+
+          info = json.loads(Path('artifacts/actrium-build.json').read_text())
+          assert info['source_sha'] == '2f7c5eb20ea2d28d530d89f53125f056d0165d1e'
+          assert info['tag'] == 'actrium-2f7c5eb20ea2'
+          assert info['app_version'] == '0.10.7' and info['build_number'] == '11'
+          expected_run = f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/44059384011"
+          assert info['run_url'] == expected_run
+          runpy.run_path('scripts/actrium/release-macos.py')['check_tag'](info['tag'], info['source_sha'])
+          with Path(os.environ['GITHUB_ENV']).open('a') as output:
+              output.write(f"RELEASE_TAG={info['tag']}\nRELEASE_SHA={info['source_sha']}\nAPP_VERSION={info['app_version']}\n")
+          PY
+      - name: Publish the already verified DMG and checksum
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CREATE_SNAPSHOT: "true"
+        run: python3 scripts/actrium/release-macos.py publish --assets artifacts
