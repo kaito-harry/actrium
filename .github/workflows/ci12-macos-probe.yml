@@ -1,8 +1,6 @@
 name: Actrium macOS snapshot validation
 
 on:
-  push:
-    branches: [codex/actrium-snapshot-validation]
   workflow_dispatch:
     inputs:
       mode:
@@ -13,6 +11,14 @@ on:
         required: true
       tag:
         description: Existing release tag (only used by existing-tag).
+        type: string
+        required: false
+      publish:
+        description: Publish the verified DMG; false exercises artifact-only dry run.
+        type: boolean
+        default: true
+      source_sha:
+        description: Validation-only source SHA for a second-commit snapshot; empty uses main.
         type: string
         required: false
 
@@ -37,7 +43,30 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_MODE: ${{ inputs.mode || 'snapshot' }}
           RELEASE_TAG: ${{ inputs.tag }}
-        run: python3 scripts/actrium/release-macos.py resolve --mode "$RELEASE_MODE" --tag "$RELEASE_TAG"
+          VALIDATION_SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          if [[ -z "$VALIDATION_SOURCE_SHA" ]]; then
+            python3 scripts/actrium/release-macos.py resolve --mode "$RELEASE_MODE" --tag "$RELEASE_TAG"
+          else
+            python3 - <<'PY'
+          import base64
+          import os
+          from pathlib import Path
+          import runpy
+          import tomllib
+
+          helpers = runpy.run_path('scripts/actrium/release-macos.py')
+          sha = os.environ['VALIDATION_SOURCE_SHA']
+          tag = f'actrium-{sha[:12]}'
+          helpers['check_tag'](tag, sha)
+          helpers['check_destination'](tag, sha, True)
+          cargo_file = helpers['api'](f'contents/Cargo.toml?ref={sha}')
+          cargo = tomllib.loads(base64.b64decode(cargo_file['content']).decode())
+          version = helpers['numeric_version'](cargo['workspace']['package']['version'])
+          with Path(os.environ['GITHUB_OUTPUT']).open('a') as output:
+              output.write(f'tag={tag}\nsource_sha={sha}\napp_version={version}\n')
+          PY
+          fi
 
   release:
     name: Package and publish browser
@@ -49,5 +78,5 @@ jobs:
       tag: ${{ needs.resolve.outputs.tag }}
       source_sha: ${{ needs.resolve.outputs.source_sha }}
       app_version: ${{ needs.resolve.outputs.app_version }}
-      publish: true
+      publish: ${{ github.event_name == 'push' || inputs.publish }}
       create_snapshot: ${{ github.event_name == 'push' || inputs.mode == 'snapshot' }}
