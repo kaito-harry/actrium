@@ -145,8 +145,15 @@ def validate(args):
 
 
 def asset_paths(directory: Path, tag: str):
-    dmg = directory / f"Actrium_{tag}_macos-arm64_unsigned.dmg"
+    snapshot = SNAPSHOT.fullmatch(tag)
+    suffix = snapshot[1][:8] if snapshot else tag
+    dmg = directory / f"Actrium-{suffix}.dmg"
     return dmg, dmg.with_suffix(".dmg.sha256")
+
+
+def filename(args):
+    tag, _, _ = context()
+    print(asset_paths(args.assets, tag)[0].name)
 
 
 def digest(path: Path) -> str:
@@ -251,7 +258,7 @@ def report(args):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("stage", choices=["resolve", "validate", "metadata", "publish", "report"])
+    parser.add_argument("stage", choices=["resolve", "validate", "filename", "metadata", "publish", "report"])
     parser.add_argument("--mode", choices=["snapshot", "existing-tag"], default="snapshot")
     parser.add_argument("--tag", default="")
     parser.add_argument("--source", type=Path, default=Path("."))

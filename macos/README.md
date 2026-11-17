@@ -87,8 +87,8 @@ Only after packaging and image verification succeed does it create the tag
 and a GitHub **Pre-release**, explicitly excluding it from Latest. Repeating
 the same commit reuses both and replaces only these two attachments:
 
-- `Actrium_<tag>_macos-arm64_unsigned.dmg`
-- `Actrium_<tag>_macos-arm64_unsigned.dmg.sha256`
+- `Actrium-<8-character SHA>.dmg` (for example, `Actrium-a1b2c3d4.dmg`)
+- `Actrium-<8-character SHA>.dmg.sha256`
 
 A new `main` commit produces a new snapshot. A tag that points to another
 commit causes a clear failure and is never moved. Builds for the same tag
@@ -108,7 +108,9 @@ characters>` and `vX.Y.Z` (optionally with a prerelease suffix, such as
 resolved to a pinned commit. Versioned releases use the tag's numeric version
 and keep their existing notes, prerelease status, and Latest status. This mode
 never creates a missing tag or release. Previously published snapshots with
-12-character SHA suffixes remain supported by `existing-tag`.
+12-character SHA suffixes remain supported by `existing-tag`; their new DMG
+filenames also use the first 8 characters. Versioned releases use
+`Actrium-<tag>.dmg`, for example `Actrium-v0.10.7.dmg`, and its `.sha256` file.
 
 Both paths call `.github/workflows/_actrium-macos-release.yml`; they do not
 invoke SDK, CLI, or Loran publishing. Release Train calls that same reusable
@@ -129,7 +131,7 @@ Open Anyway** if macOS offers it. Do not disable Gatekeeper globally.
 Download both attachments into the same directory and check integrity:
 
 ```sh
-shasum -a 256 -c Actrium_*_macos-arm64_unsigned.dmg.sha256
+shasum -a 256 -c Actrium-*.dmg.sha256
 ```
 
 The workflow mounts the final read-only image and verifies the app and

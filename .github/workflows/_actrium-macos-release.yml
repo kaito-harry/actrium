@@ -125,11 +125,13 @@ jobs:
           ACTRIUM_MACOS_ROOT: ${{ github.workspace }}/source/macos
           DERIVED_DATA_PATH: ${{ runner.temp }}/actrium-derived-data
           DIST_DIR: ${{ github.workspace }}/artifacts
-          TAG: ${{ inputs.tag }}_macos-arm64_unsigned
+          TAG: ${{ inputs.tag }}
           BUILD_NUMBER: ${{ github.run_number }}
           BUILD_ARCH: arm64
         run: |
           set -euo pipefail
+          DMG_NAME=$(python3 automation/scripts/actrium/release-macos.py filename)
+          export DMG_NAME
           automation/macos/scripts/package-dmg.sh --unsigned 2>&1 | tee "$RUNNER_TEMP/actrium-package.log"
           grep -Fq 'Production bundle created (minified)' "$RUNNER_TEMP/actrium-package.log"
       - name: Mount and verify DMG, then write checksum and provenance
@@ -137,7 +139,7 @@ jobs:
           BUILD_NUMBER: ${{ github.run_number }}
         run: |
           automation/scripts/actrium/verify-macos-dmg.sh \
-            "$GITHUB_WORKSPACE/artifacts/Actrium_${RELEASE_TAG}_macos-arm64_unsigned.dmg" \
+            "$DMG_PATH" \
             "$APP_VERSION" "$BUILD_NUMBER"
           python3 automation/scripts/actrium/release-macos.py metadata --assets artifacts
       - name: Save DMG, checksum, and build information

@@ -24,6 +24,7 @@
 #   CONFIGURATION      Default Release
 #   DERIVED_DATA_PATH  Default ./build/DerivedData
 #   DIST_DIR           Default ./dist
+#   DMG_NAME           Optional filename override, default {APP_SCHEME}_{TAG}.dmg
 #   TAG                Artifact tag, default v{MARKETING_VERSION}_{CURRENT_PROJECT_VERSION}_{git short sha}
 #   ACTRIUM_MACOS_ROOT Optional source macos/ directory (for reusable CI automation)
 #   APP_VERSION        Optional numeric app version override
@@ -338,12 +339,12 @@ if [ "${SKIP_NOTARY_APP}" -eq 0 ]; then
 fi
 
 DMG_PATH=""
-DMG_NAME=""
+DMG_NAME="${DMG_NAME:-}"
 if [ "${SKIP_DMG}" -eq 0 ]; then
   echo "==> Creating the DMG"
   mkdir -p "${DIST_DIR}"
 
-  DMG_NAME="${APP_SCHEME}_${TAG}.dmg"
+  DMG_NAME="${DMG_NAME:-${APP_SCHEME}_${TAG}.dmg}"
   DMG_PATH="${DIST_DIR}/${DMG_NAME}"
 
   DMG_ROOT="${TMP_DIR}/dmg_root"
