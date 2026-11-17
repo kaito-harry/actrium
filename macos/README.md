@@ -79,7 +79,9 @@ full SHA, even when another workflow branch is selected. Its tag is
 `actrium-` followed by the first **12** hexadecimal characters of that SHA,
 for example `actrium-a1b2c3d4e5f6`. It builds an unsigned Release app on an
 Apple Silicon macOS 26 runner with Xcode 26.1, including the minified production
-JavaScript bundle and local ActriumCore/ActriumVault XCFrameworks.
+JavaScript bundle, local ActriumCore/ActriumVault XCFrameworks, and the Actr
+Swift bindings/XCFramework used by the browser's Realm features. These are
+local build dependencies; this workflow does not publish SDK packages.
 
 Only after packaging and image verification succeed does it create the tag
 and a GitHub **Pre-release**, explicitly excluding it from Latest. Repeating
