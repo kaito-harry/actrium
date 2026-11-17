@@ -177,9 +177,11 @@ jobs:
           else
             ver=$(python3 -c "import tomllib;from pathlib import Path;d=tomllib.loads(Path('Cargo.toml').read_text());print(d['workspace']['package']['version'])")
           fi
-          echo "version=${ver}" >> "$GITHUB_OUTPUT"
-          echo "app_version=${ver%%-*}" >> "$GITHUB_OUTPUT"
-          echo "dry_run=${{ inputs.dry_run || 'false' }}" >> "$GITHUB_OUTPUT"
+          {
+            echo "version=${ver}"
+            echo "app_version=${ver%%-*}"
+            echo "dry_run=${{ inputs.dry_run || 'false' }}"
+          } >> "$GITHUB_OUTPUT"
           # Push-triggered runs have no inputs: any dashed version (e.g.
           # 0.8.0-rc.1) is a pre-release, so infer the flag from the version.
           if [[ "${{ inputs.pre_release || 'false' }}" == "true" || "$ver" == *-* ]]; then
