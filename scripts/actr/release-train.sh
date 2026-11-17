@@ -92,6 +92,7 @@ readonly VALID_STAGES=(
 readonly REPORT_STAGES=(
   "${VALID_STAGES[@]}"
   "publish-actrsharp"
+  "publish-actrium-macos"
 )
 
 readonly OPTIONAL_SKIPPED_COMPONENTS=(

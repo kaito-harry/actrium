@@ -1,0 +1,175 @@
+name: Reusable Actrium macOS Release
+
+on:
+  workflow_call:
+    inputs:
+      tag: { required: true, type: string }
+      source_sha: { required: true, type: string }
+      app_version: { required: true, type: string }
+      publish: { required: true, type: boolean }
+      create_snapshot: { required: false, type: boolean, default: false }
+      report_version: { required: false, type: string, default: "" }
+
+# Both the manual entry point and Release Train share this lock. Do not use
+# the caller's workflow name here: they must serialize for the same tag.
+concurrency:
+  group: actrium-macos-release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  RELEASE_TAG: ${{ inputs.tag }}
+  RELEASE_SHA: ${{ inputs.source_sha }}
+  APP_VERSION: ${{ inputs.app_version }}
+
+jobs:
+  build:
+    name: Build and verify unsigned arm64 DMG
+    runs-on: macos-26
+    timeout-minutes: 90
+    steps:
+      - name: Checkout release automation
+        uses: actions/checkout@v5
+        with:
+          path: automation
+          persist-credentials: false
+      - name: Checkout pinned source
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.source_sha }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Validate source, version, and destination
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUBLISH: ${{ inputs.publish }}
+          CREATE_SNAPSHOT: ${{ inputs.create_snapshot }}
+        run: python3 automation/scripts/actrium/release-macos.py validate --source source
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26.1"
+      - name: Verify build host
+        run: |
+          test "$(uname -m)" = arm64
+          xcodebuild -version
+          xcrun --sdk macosx --show-sdk-version
+      - uses: pnpm/action-setup@v4
+        with:
+          version: "10.11.0"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: source/pnpm-lock.yaml
+      - name: Install JavaScript dependencies
+        working-directory: source
+        env:
+          HUSKY: "0"
+        run: pnpm install --frozen-lockfile
+      - name: Prepare CocoaPods
+        run: |
+          if ! command -v pod >/dev/null 2>&1; then
+            brew install cocoapods
+          fi
+          pod --version
+      - name: Install Pods
+        working-directory: source/macos
+        run: pod install
+      - uses: dtolnay/rust-toolchain@1.99.0
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ github.token }}
+          version: ${{ vars.PROTOC_VERSION || '29.3' }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: source
+          shared-key: actrium-macos-release
+      - name: Build ActriumCore and ActriumVault XCFrameworks
+        working-directory: source
+        env:
+          CMAKE_POLICY_VERSION_MINIMUM: "3.5"
+        run: scripts/actrium/build-actrium-rust-bindings.sh apple-macos
+      - name: Build Release app and package unsigned DMG
+        env:
+          ACTRIUM_MACOS_ROOT: ${{ github.workspace }}/source/macos
+          DERIVED_DATA_PATH: ${{ runner.temp }}/actrium-derived-data
+          DIST_DIR: ${{ github.workspace }}/artifacts
+          TAG: ${{ inputs.tag }}_macos-arm64_unsigned
+          BUILD_NUMBER: ${{ github.run_number }}
+          BUILD_ARCH: arm64
+        run: |
+          set -euo pipefail
+          automation/macos/scripts/package-dmg.sh --unsigned 2>&1 | tee "$RUNNER_TEMP/actrium-package.log"
+          grep -Fq 'Production bundle created (minified)' "$RUNNER_TEMP/actrium-package.log"
+      - name: Mount and verify DMG, then write checksum and provenance
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          automation/scripts/actrium/verify-macos-dmg.sh \
+            "$GITHUB_WORKSPACE/artifacts/Actrium_${RELEASE_TAG}_macos-arm64_unsigned.dmg" \
+            "$APP_VERSION" "$BUILD_NUMBER"
+          python3 automation/scripts/actrium/release-macos.py metadata --assets artifacts
+      - name: Save DMG, checksum, and build information
+        uses: actions/upload-artifact@v4
+        with:
+          name: actrium-macos-${{ inputs.tag }}
+          path: artifacts/
+          if-no-files-found: error
+      - name: Save build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: actrium-macos-build-log-${{ inputs.tag }}
+          path: ${{ runner.temp }}/actrium-package.log
+          if-no-files-found: ignore
+
+  publish:
+    name: Publish DMG and checksum
+    needs: build
+    if: inputs.publish
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: actrium-macos-${{ inputs.tag }}
+          path: artifacts
+      - name: Create snapshot after build or reuse existing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CREATE_SNAPSHOT: ${{ inputs.create_snapshot }}
+        run: python3 scripts/actrium/release-macos.py publish --assets artifacts
+
+  report:
+    name: Report macOS release result
+    if: always()
+    needs: [build, publish]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Write Release Train state and summary
+        env:
+          PUBLISH: ${{ inputs.publish }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          PUBLISH_RESULT: ${{ needs.publish.result }}
+          REPORT_VERSION: ${{ inputs.report_version || inputs.app_version }}
+        run: python3 scripts/actrium/release-macos.py report --assets reports
+      - uses: actions/upload-artifact@v4
+        with:
+          name: publish-actrium-macos-artifacts
+          path: reports/*.state.tsv
+          if-no-files-found: error

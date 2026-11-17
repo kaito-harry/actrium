@@ -25,6 +25,10 @@
 #   DERIVED_DATA_PATH  Default ./build/DerivedData
 #   DIST_DIR           Default ./dist
 #   TAG                Artifact tag, default v{MARKETING_VERSION}_{CURRENT_PROJECT_VERSION}_{git short sha}
+#   ACTRIUM_MACOS_ROOT Optional source macos/ directory (for reusable CI automation)
+#   APP_VERSION        Optional numeric app version override
+#   BUILD_NUMBER       Optional numeric Xcode build number override
+#   BUILD_ARCH         Optional single architecture: arm64 or x86_64
 #
 # Signing (required unless --skip-signing/--unsigned):
 #   IDENTITY_NAME      For example "Developer ID Application: Foo (TEAMID)"
@@ -56,7 +60,7 @@ need_cmd() {
 
 is_truthy() {
   case "${1:-}" in
-    1|true|TRUE|yes|YES|y|Y) return 0 ;;
+    1 | true | TRUE | yes | YES | y | Y) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -99,7 +103,7 @@ while [ "${#}" -gt 0 ]; do
     --skip-dmg) SKIP_DMG=1 ;;
     --skip-notary-dmg) SKIP_NOTARY_DMG=1 ;;
     --create-github-release) CREATE_GITHUB_RELEASE=1 ;;
-    -h|--help)
+    -h | --help)
       usage
       exit 0
       ;;
@@ -113,7 +117,7 @@ done
 [ "$(uname -s)" = "Darwin" ] || die "this script must run on macOS."
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+PROJECT_ROOT="$(cd "${ACTRIUM_MACOS_ROOT:-${SCRIPT_DIR}/..}" && pwd)"
 cd "${PROJECT_ROOT}"
 
 APP_SCHEME="${APP_SCHEME:-Actrium}"
@@ -142,12 +146,27 @@ need_cmd find
 need_cmd ditto
 need_cmd hdiutil
 
-# The Xcode project is the single source of truth for the version.
+# Local builds default to the Xcode project version; CI supplies immutable
+# release metadata without editing the checked-out source project.
+XCODE_BUILD_SETTINGS=()
+if [ -n "${APP_VERSION:-}" ]; then
+  [[ "$APP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "APP_VERSION must be MAJOR.MINOR.PATCH"
+  XCODE_BUILD_SETTINGS+=("MARKETING_VERSION=${APP_VERSION}")
+fi
+if [ -n "${BUILD_NUMBER:-}" ]; then
+  [[ "$BUILD_NUMBER" =~ ^[0-9]+$ ]] || die "BUILD_NUMBER must be numeric"
+  XCODE_BUILD_SETTINGS+=("CURRENT_PROJECT_VERSION=${BUILD_NUMBER}")
+fi
+if [ -n "${BUILD_ARCH:-}" ]; then
+  case "$BUILD_ARCH" in arm64 | x86_64) ;; *) die "BUILD_ARCH must be arm64 or x86_64" ;; esac
+  XCODE_BUILD_SETTINGS+=(-destination "platform=macOS,arch=${BUILD_ARCH}" "ARCHS=${BUILD_ARCH}" ONLY_ACTIVE_ARCH=YES)
+fi
 if [ -z "${TAG:-}" ]; then
   echo "==> Reading the version"
   BUILD_SETTINGS="$(xcodebuild "${XCODE_PROJECT_FLAG[@]}" \
     -scheme "${APP_SCHEME}" \
     -configuration "${CONFIGURATION}" \
+    ${XCODE_BUILD_SETTINGS[@]+"${XCODE_BUILD_SETTINGS[@]}"} \
     -showBuildSettings 2>/dev/null || true)"
 
   MARKETING_VERSION="$(printf '%s\n' "${BUILD_SETTINGS}" | awk -F' = ' '/^[[:space:]]*MARKETING_VERSION = /{print $2; exit}')"
@@ -197,6 +216,7 @@ xcodebuild \
   -configuration "${CONFIGURATION}" \
   -derivedDataPath "${DERIVED_DATA_PATH}" \
   CODE_SIGNING_ALLOWED=NO \
+  ${XCODE_BUILD_SETTINGS[@]+"${XCODE_BUILD_SETTINGS[@]}"} \
   build
 
 echo "==> Locating the build product"
@@ -245,7 +265,7 @@ ensure_keychain_for_import() {
   if [ -z "${P12_FILE}" ]; then
     [ -n "${APP_BASE64:-}" ] || die "importing a certificate requires APP_BASE64 or P12_FILE"
     P12_FILE="${TMP_DIR}/cert.p12"
-    printf '%s' "${APP_BASE64}" | tr -d '\n' | base64 --decode > "${P12_FILE}"
+    printf '%s' "${APP_BASE64}" | tr -d '\n' | base64 --decode >"${P12_FILE}"
   fi
 
   [ -n "${P12_PASSWORD:-}" ] || die "importing a certificate requires P12_PASSWORD"
@@ -362,8 +382,14 @@ infer_github_repository() {
   url="$(git remote get-url origin 2>/dev/null || true)"
   [ -n "${url}" ] || return 1
   case "${url}" in
-    git@github.com:*.git) echo "${url#git@github.com:}" | sed 's/\.git$//' ;;
-    https://github.com/*) echo "${url#https://github.com/}" | sed 's/\.git$//' ;;
+    git@github.com:*.git)
+      url="${url#git@github.com:}"
+      echo "${url%.git}"
+      ;;
+    https://github.com/*)
+      url="${url#https://github.com/}"
+      echo "${url%.git}"
+      ;;
     *) return 1 ;;
   esac
 }
@@ -399,5 +425,5 @@ if [ -n "${GITHUB_ENV:-}" ]; then
       echo "DMG_PATH=${DMG_PATH}"
       echo "DMG_NAME=${DMG_NAME}"
     fi
-  } >> "${GITHUB_ENV}"
+  } >>"${GITHUB_ENV}"
 fi

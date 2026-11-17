@@ -154,6 +154,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.resolve.outputs.version }}
+      app_version: ${{ steps.resolve.outputs.app_version }}
       dry_run: ${{ steps.resolve.outputs.dry_run }}
       pre_release: ${{ steps.resolve.outputs.pre_release }}
       skip_python: ${{ steps.resolve.outputs.skip_python }}
@@ -177,6 +178,7 @@ jobs:
             ver=$(python3 -c "import tomllib;from pathlib import Path;d=tomllib.loads(Path('Cargo.toml').read_text());print(d['workspace']['package']['version'])")
           fi
           echo "version=${ver}" >> "$GITHUB_OUTPUT"
+          echo "app_version=${ver%%-*}" >> "$GITHUB_OUTPUT"
           echo "dry_run=${{ inputs.dry_run || 'false' }}" >> "$GITHUB_OUTPUT"
           # Push-triggered runs have no inputs: any dashed version (e.g.
           # 0.8.0-rc.1) is a pre-release, so infer the flag from the version.
@@ -840,6 +842,22 @@ jobs:
       replace_assets: true
     secrets: inherit
 
+  # ── Publish Actrium macOS ─────────────────────────────────────────────
+  publish-actrium-macos:
+    name: Publish Actrium macOS DMG
+    needs:
+      - context
+      - create-release
+    permissions:
+      contents: write
+    uses: ./.github/workflows/_actrium-macos-release.yml
+    with:
+      tag: v${{ needs.context.outputs.version }}
+      source_sha: ${{ needs.context.outputs.release_sha }}
+      app_version: ${{ needs.context.outputs.app_version }}
+      report_version: ${{ needs.context.outputs.version }}
+      publish: ${{ !fromJSON(needs.context.outputs.dry_run) }}
+
   # ── Collect Report ────────────────────────────────────────────────────
   collect-report:
     name: Collect release report
@@ -860,6 +878,7 @@ jobs:
       - publish-cli
       - publish-loran
       - publish-protoc-plugins
+      - publish-actrium-macos
     runs-on: ubuntu-latest
     steps:
       - name: Checkout target branch
