@@ -29,6 +29,8 @@ jobs:
   resolve:
     name: Pin release source
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     outputs:
       tag: ${{ steps.context.outputs.tag }}
       source_sha: ${{ steps.context.outputs.source_sha }}
@@ -67,6 +69,14 @@ jobs:
               output.write(f'tag={tag}\nsource_sha={sha}\napp_version={version}\n')
           PY
           fi
+      - name: Seed unrelated attachment on the QA release
+        if: inputs.mode == 'existing-tag' && inputs.tag == '0.10.7-macos-backfill-validation'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          QA_TAG: ${{ inputs.tag }}
+        run: |
+          printf '%s\n' 'Unrelated release attachment: retain this file during browser backfill.' > KEEP.txt
+          gh release upload "$QA_TAG" KEEP.txt --repo "$GITHUB_REPOSITORY" --clobber
 
   release:
     name: Package and publish browser
