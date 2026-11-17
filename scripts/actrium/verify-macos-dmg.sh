@@ -2,6 +2,24 @@
 # Verify the image that will be uploaded, including its nested renderer.
 set -euo pipefail
 
+hdiutil_retry() {
+  local attempt output status
+  for attempt in {1..8}; do
+    if output=$(LC_ALL=C hdiutil "$@" 2>&1); then
+      printf '%s\n' "$output"
+      return 0
+    else
+      status=$?
+    fi
+    printf '%s\n' "$output" >&2
+    if [[ "$output" != *"Resource temporarily unavailable"* && "$output" != *"Resource busy"* ]] || [[ "$attempt" -eq 8 ]]; then
+      return "$status"
+    fi
+    echo "Disk image service is busy; retrying in 5 seconds (${attempt}/8)." >&2
+    sleep 5
+  done
+}
+
 DMG_PATH=${1:?Usage: verify-macos-dmg.sh DMG APP_VERSION BUILD_NUMBER}
 APP_VERSION=${2:?Missing app version}
 BUILD_NUMBER=${3:?Missing build number}
@@ -11,8 +29,8 @@ cleanup() {
   rmdir "$MOUNT_DIR" 2>/dev/null || true
 }
 trap cleanup EXIT
-hdiutil verify "$DMG_PATH"
-hdiutil attach "$DMG_PATH" -readonly -nobrowse -mountpoint "$MOUNT_DIR"
+hdiutil_retry verify "$DMG_PATH"
+hdiutil_retry attach "$DMG_PATH" -readonly -nobrowse -mountpoint "$MOUNT_DIR"
 test -d "$MOUNT_DIR/Actrium.app"
 test -L "$MOUNT_DIR/Applications"
 test "$(readlink "$MOUNT_DIR/Applications")" = /Applications

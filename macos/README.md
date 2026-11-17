@@ -128,7 +128,7 @@ Open Anyway** if macOS offers it. Do not disable Gatekeeper globally.
 Download both attachments into the same directory and check integrity:
 
 ```sh
-shasum -a 256 -c Actrium_<tag>_macos-arm64_unsigned.dmg.sha256
+shasum -a 256 -c Actrium_*_macos-arm64_unsigned.dmg.sha256
 ```
 
 The workflow mounts the final read-only image and verifies the app and
