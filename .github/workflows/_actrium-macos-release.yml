@@ -71,7 +71,13 @@ jobs:
         working-directory: source
         env:
           HUSKY: "0"
-        run: pnpm install --frozen-lockfile
+        run: |
+          # Local file dependencies have SDK prepublish hooks. Packaging the
+          # browser only needs the runtime and Keel's React Native patches.
+          pnpm install --frozen-lockfile --ignore-scripts
+          pnpm --dir packages/actrium run postinstall
+          cd packages/actrium
+          node node_modules/keel/scripts/keel_postinstall.js
       - name: Prepare CocoaPods
         run: |
           if ! command -v pod >/dev/null 2>&1; then
