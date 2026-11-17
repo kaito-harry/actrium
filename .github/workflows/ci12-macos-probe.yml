@@ -22,7 +22,7 @@ on:
         type: string
         required: false
       promote_verified_artifact:
-        description: QA only - publish the verified new-main build from run 44059384011.
+        description: QA only - replay the legacy verified build from run 44059384011.
         type: boolean
         default: false
 
@@ -64,7 +64,7 @@ jobs:
 
           helpers = runpy.run_path('scripts/actrium/release-macos.py')
           sha = os.environ['VALIDATION_SOURCE_SHA']
-          tag = f'actrium-{sha[:12]}'
+          tag = f'actrium-{sha[:8]}'
           helpers['check_tag'](tag, sha)
           helpers['check_destination'](tag, sha, True)
           cargo_file = helpers['api'](f'contents/Cargo.toml?ref={sha}')
