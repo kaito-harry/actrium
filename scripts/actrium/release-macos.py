@@ -18,7 +18,8 @@ import tomllib
 from urllib.parse import quote
 
 
-SNAPSHOT = re.compile(r"actrium-[0-9a-f]{12}")
+# Generate eight-character tags; retain older twelve-character tags for backfills.
+SNAPSHOT = re.compile(r"actrium-([0-9a-f]{8}(?:[0-9a-f]{4})?)")
 VERSION = re.compile(r"v?([0-9]+\.[0-9]+\.[0-9]+)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?")
 NOTES_START = "<!-- actrium-macos-build:start -->"
 NOTES_END = "<!-- actrium-macos-build:end -->"
@@ -67,12 +68,12 @@ def numeric_version(version: str) -> str:
 def check_tag(tag: str, sha: str) -> bool:
     if not re.fullmatch(r"[0-9a-f]{40}", sha):
         raise ValueError("source_sha must be a full 40-character commit SHA")
-    if SNAPSHOT.fullmatch(tag):
-        if tag != f"actrium-{sha[:12]}":
+    if match := SNAPSHOT.fullmatch(tag):
+        if not sha.startswith(match[1]):
             raise ValueError(f"Snapshot tag {tag} does not match source commit {sha}")
         return True
     if not VERSION.fullmatch(tag):
-        raise ValueError("Expected actrium-<12 hex characters> or a vX.Y.Z[-prerelease] tag")
+        raise ValueError("Expected actrium-<8 hex characters> (or a legacy 12-character snapshot) or a vX.Y.Z[-prerelease] tag")
     return False
 
 
@@ -97,11 +98,11 @@ def check_destination(tag: str, sha: str, create_snapshot: bool):
 def resolve(args):
     if args.mode == "snapshot":
         sha = api("commits/main")["sha"]
-        tag = f"actrium-{sha[:12]}"
+        tag = f"actrium-{sha[:8]}"
     else:
         tag = args.tag
         if not (SNAPSHOT.fullmatch(tag) or VERSION.fullmatch(tag)):
-            raise ValueError("existing-tag requires actrium-<12 hex characters> or vX.Y.Z[-prerelease]")
+            raise ValueError("existing-tag requires actrium-<8 hex characters>, a legacy 12-character snapshot, or vX.Y.Z[-prerelease]")
         sha = tag_commit(tag)
         if sha is None:
             raise ValueError(f"Existing tag {tag!r} was not found")
