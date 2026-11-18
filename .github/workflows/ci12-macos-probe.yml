@@ -25,13 +25,21 @@ on:
         description: QA only - replay the legacy verified build from run 44059384011.
         type: boolean
         default: false
+      smoke_published:
+        description: Only install and test previously published DMGs.
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
+  smoke:
+    if: inputs.smoke_published
+    uses: ./.github/workflows/actrium-release-smoke.yml
+
   resolve:
-    if: ${{ !inputs.promote_verified_artifact }}
+    if: ${{ !inputs.smoke_published && !inputs.promote_verified_artifact }}
     name: Pin release source
     runs-on: ubuntu-24.04
     permissions:
@@ -84,7 +92,7 @@ jobs:
           gh release upload "$QA_TAG" KEEP.txt --repo "$GITHUB_REPOSITORY" --clobber
 
   release:
-    if: ${{ !inputs.promote_verified_artifact }}
+    if: ${{ !inputs.smoke_published && !inputs.promote_verified_artifact }}
     name: Package and publish browser
     needs: resolve
     permissions:
@@ -99,7 +107,7 @@ jobs:
 
   promote:
     name: Publish verified new-main artifact
-    if: inputs.promote_verified_artifact
+    if: inputs.promote_verified_artifact && !inputs.smoke_published
     runs-on: ubuntu-24.04
     permissions:
       actions: read

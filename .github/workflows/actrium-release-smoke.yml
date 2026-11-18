@@ -1,6 +1,6 @@
 name: Actrium published DMG smoke test
 
-on: workflow_dispatch
+on: workflow_call
 
 permissions:
   contents: read
