@@ -30,3 +30,10 @@ jobs:
           BUILD_NUMBER: ${{ matrix.build }}
           EXPECTED_SHA256: ${{ matrix.sha256 }}
         run: bash scripts/actrium/smoke-published-dmg.sh
+      - name: Save browser screenshots if the runner allows capture
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: actrium-smoke-${{ matrix.tag }}
+          path: ${{ runner.temp }}/actrium-smoke-images/
+          if-no-files-found: ignore

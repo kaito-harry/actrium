@@ -58,15 +58,16 @@ let path = "/Applications/Actrium.app"
 guard let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleURL?.path == path }),
       app.isFinishedLaunching,
       let windows = CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as? [[String: Any]],
-      windows.contains(where: { window in
+      let window = windows.first(where: { window in
           guard (window[kCGWindowOwnerPID as String] as? Int32) == app.processIdentifier,
                 (window[kCGWindowLayer as String] as? Int) == 0,
                 let bounds = window[kCGWindowBounds as String] as? [String: Double]
           else { return false }
           return (bounds["Width"] ?? 0) >= 300 && (bounds["Height"] ?? 0) >= 200
-      })
+      }),
+      let id = window[kCGWindowNumber as String] as? Int
 else { exit(1) }
-print(app.processIdentifier)
+print("\(app.processIdentifier) \(id)")
 SWIFT
 xcrun swiftc "$root/window.swift" -o "$root/window"
 
@@ -75,10 +76,10 @@ show_logs() {
 }
 
 await_window() {
-  local pid
+  local window
   for _ in {1..30}; do
-    if pid=$("$root/window"); then
-      printf '%s\n' "$pid"
+    if window=$("$root/window"); then
+      printf '%s\n' "$window"
       return
     fi
     sleep 2
@@ -89,24 +90,21 @@ await_window() {
   return 1
 }
 
-open -a "$app"
-app_pid=$(await_window)
-echo "Normal launch created a visible browser window (pid=$app_pid)"
-
-renderer_ready=false
-for _ in {1..12}; do
-  show_logs
-  if grep -E 'ActriumRenderer.*Renderer surface ready:' "$root/launch.log"; then
-    renderer_ready=true
-    break
+capture_window() {
+  local id=$1 file=$2
+  local screenshots="${RUNNER_TEMP:-/tmp}/actrium-smoke-images"
+  mkdir -p "$screenshots"
+  if ! screencapture -x -l "$id" "$screenshots/$file.png"; then
+    echo "Window screenshot unavailable: $file"
   fi
-  sleep 2
-done
-if ! "$renderer_ready"; then
-  echo "Start-page renderer did not report a ready surface"
-  tail -n 100 "$root/launch.log"
-  exit 1
-fi
+}
+
+open -a "$app"
+window=$(await_window)
+read -r app_pid window_id <<<"$window"
+echo "Normal launch created a visible browser window (pid=$app_pid)"
+sleep 3
+capture_window "$window_id" start-page
 kill -TERM "$app_pid"
 for _ in {1..10}; do
   if ! kill -0 "$app_pid" 2>/dev/null; then break; fi
@@ -155,15 +153,22 @@ for _ in {1..10}; do
   sleep 1
 done
 open -a "$app" --args --url "http://127.0.0.1:$(cat "$root/port")/"
-app_pid=$(await_window)
+window=$(await_window)
+read -r app_pid window_id <<<"$window"
 for _ in {1..30}; do
   if [[ -s "$root/javascript-ok" ]]; then break; fi
-  kill -0 "$app_pid"
+  if ! kill -0 "$app_pid" 2>/dev/null; then break; fi
   sleep 2
 done
-test -s "$root/javascript-ok"
+capture_window "$window_id" web-page
+if [[ ! -s "$root/javascript-ok" ]]; then
+  echo "WebKit did not run the test page's JavaScript"
+  show_logs
+  tail -n 100 "$root/launch.log"
+  exit 1
+fi
 sleep 5
-test "$("$root/window")" = "$app_pid"
+test "$("$root/window")" = "$window"
 echo "Installed Actrium loaded the local HTTP page and ran its JavaScript"
 cat "$root/javascript-ok"
 echo
