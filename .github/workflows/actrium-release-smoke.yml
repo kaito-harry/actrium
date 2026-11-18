@@ -1,0 +1,32 @@
+name: Actrium published DMG smoke test
+
+on: workflow_dispatch
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Test published ${{ matrix.tag }}
+    runs-on: macos-26
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - tag: actrium-7d745c7ac59b
+            build: "6"
+            sha256: c12759bce46487ec805bf8268929f30dcaf77710942db53595a5238e7eb696f7
+          - tag: actrium-2f7c5eb20ea2
+            build: "11"
+            sha256: c1fb5f30f1340185fe605dd345ffbf8853a76fe31c47ca76cbb1c04fb0f974a3
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Download, verify, and launch the published DMG
+        env:
+          RELEASE_TAG: ${{ matrix.tag }}
+          BUILD_NUMBER: ${{ matrix.build }}
+          EXPECTED_SHA256: ${{ matrix.sha256 }}
+        run: bash scripts/actrium/smoke-published-dmg.sh
