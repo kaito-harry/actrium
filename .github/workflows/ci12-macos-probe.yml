@@ -1,6 +1,17 @@
 name: Release Actrium macOS
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      smoke_tag:
+        description: Test this published DMG instead of building and publishing.
+        type: string
+      smoke_build:
+        description: Expected CFBundleVersion when testing a published DMG.
+        type: string
+      smoke_sha256:
+        description: Expected SHA-256 when testing a published DMG.
+        type: string
 
 permissions:
   contents: write
@@ -11,6 +22,7 @@ concurrency:
 
 jobs:
   snapshot:
+    if: inputs.smoke_tag == ''
     runs-on: macos-26
     timeout-minutes: 180
     env:
@@ -111,3 +123,28 @@ jobs:
           gh release upload "$TAG" "$asset" "$asset.sha256" --clobber
           gh release edit "$TAG" --latest=false --notes-file "$notes"
           gh release view "$TAG" --json url --jq '.url' >> "$GITHUB_STEP_SUMMARY"
+
+  smoke:
+    if: inputs.smoke_tag != ''
+    runs-on: macos-26
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: f3bf9346056a85de764a4cb43d1f948b80a93bf7
+          persist-credentials: false
+      - name: Install, launch and load a test page from the published DMG
+        env:
+          RELEASE_TAG: ${{ inputs.smoke_tag }}
+          BUILD_NUMBER: ${{ inputs.smoke_build }}
+          EXPECTED_SHA256: ${{ inputs.smoke_sha256 }}
+        run: bash scripts/actrium/smoke-published-dmg.sh
+      - name: Save browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-${{ inputs.smoke_tag }}
+          path: ${{ runner.temp }}/actrium-smoke-images/
+          if-no-files-found: ignore
