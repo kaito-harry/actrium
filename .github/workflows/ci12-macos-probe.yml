@@ -56,6 +56,8 @@ jobs:
         with:
           targets: aarch64-apple-darwin,x86_64-apple-darwin
       - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
       - uses: arduino/setup-protoc@v3
         with:
           version: "29.3"
@@ -99,18 +101,27 @@ jobs:
           shasum -a 256 "$asset" > "$asset.sha256"
           shasum -a 256 -c "$asset.sha256"
 
+      - name: Retain the verified package independently of publication
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr472-verified-dmg
+          path: |
+            macos/dist/Actrium_*_macos-arm64_unsigned.dmg
+            macos/dist/Actrium_*_macos-arm64_unsigned.dmg.sha256
+          if-no-files-found: error
+          overwrite: true
+
       - name: Publish the snapshot to this repository
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          gh auth setup-git
           if git show-ref --verify --quiet "refs/tags/$TAG"; then
             test "$(git rev-parse "refs/tags/$TAG^{commit}")" = "$GITHUB_SHA"
           else
-            git tag "$TAG" "$GITHUB_SHA"
+            gh api --method POST "repos/$GH_REPO/git/refs" \
+              -f "ref=refs/tags/$TAG" -f "sha=$GITHUB_SHA" --silent
           fi
-          git push origin "refs/tags/$TAG:refs/tags/$TAG"
           notes="$RUNNER_TEMP/release-notes.md"
           printf 'Commit: %s\n\nBuilt: %s (UTC)\n\nApple Silicon, macOS 26.1 or later. Unsigned and not notarized.\n' \
             "$GITHUB_SHA" "$(date -u '+%Y-%m-%d %H:%M:%S')" > "$notes"
