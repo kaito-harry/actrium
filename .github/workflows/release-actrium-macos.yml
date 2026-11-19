@@ -1,0 +1,51 @@
+name: Release Actrium macOS
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Publish a snapshot of this repository's main, or replace assets on an existing release.
+        type: choice
+        options: [snapshot, existing-tag]
+        default: snapshot
+        required: true
+      tag:
+        description: Existing release tag (only used by existing-tag).
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    name: Pin release source
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.context.outputs.tag }}
+      source_sha: ${{ steps.context.outputs.source_sha }}
+      app_version: ${{ steps.context.outputs.app_version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Resolve immutable source and version
+        id: context
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_MODE: ${{ inputs.mode }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: python3 scripts/actrium/release-macos.py resolve --mode "$RELEASE_MODE" --tag "$RELEASE_TAG"
+
+  release:
+    name: Package and publish browser
+    needs: resolve
+    permissions:
+      contents: write
+    uses: ./.github/workflows/_actrium-macos-release.yml
+    with:
+      tag: ${{ needs.resolve.outputs.tag }}
+      source_sha: ${{ needs.resolve.outputs.source_sha }}
+      app_version: ${{ needs.resolve.outputs.app_version }}
+      publish: true
+      create_snapshot: ${{ inputs.mode == 'snapshot' }}

@@ -76,3 +76,79 @@ ACCOUNT_PASSWORD="app-specific-password" \
 ```
 
 Artifacts are written to `macos/dist/` (`Actrium_<tag>.dmg`).
+
+## Publish a browser snapshot from a fork
+
+Enable Actions in your fork, then open **Actions → Release Actrium macOS →
+Run workflow** and keep the default `snapshot` mode. The workflow must be on
+the fork's default branch before GitHub displays the manual entry point.
+No Apple credentials or extra GitHub secrets are required. Repository policy
+must allow the workflow's `GITHUB_TOKEN` to write contents and releases.
+
+The workflow resolves **your repository's `main`** once and checks out that
+full SHA, even when another workflow branch is selected. Its tag is
+`actrium-` followed by the first **8** hexadecimal characters of that SHA,
+for example `actrium-a1b2c3d4`. It builds an unsigned Release app on an
+Apple Silicon macOS 26 runner with Xcode 26.1, including the minified production
+JavaScript bundle, local ActriumCore/ActriumVault XCFrameworks, and the Actr
+Swift bindings/XCFramework used by the browser's Realm features. These are
+local build dependencies; this workflow does not publish SDK packages.
+
+Only after packaging and image verification succeed does it create the tag
+and a GitHub **Pre-release**, explicitly excluding it from Latest. Repeating
+the same commit reuses both and replaces only these two attachments:
+
+- `Actrium-<8-character SHA>.dmg` (for example, `Actrium-a1b2c3d4.dmg`)
+- `Actrium-<8-character SHA>.dmg.sha256`
+
+A new `main` commit produces a new snapshot. A tag that points to another
+commit causes a clear failure and is never moved. Builds for the same tag
+serialize across the manual workflow and Release Train. An upload failure
+leaves the tag and release in place so a rerun can recover.
+
+Snapshot app versions use the numeric `MAJOR.MINOR.PATCH` part of the pinned
+source's Cargo workspace version; build numbers use the caller's Actions run
+number. Release notes record the full SHA, UTC build time, version, build
+link, and platform requirements. Reruns update the managed build-information
+section while retaining other snapshot notes.
+
+For a missing or damaged attachment, select `existing-tag` and enter a tag
+whose GitHub Release already exists. Supported tags are `actrium-<8 hex
+characters>` and `vX.Y.Z` (optionally with a prerelease suffix, such as
+`v0.10.7-rc.1`; the `v` is optional). Both lightweight and annotated tags are
+resolved to a pinned commit. Versioned releases use the tag's numeric version
+and keep their existing notes, prerelease status, and Latest status. This mode
+never creates a missing tag or release. Previously published snapshots with
+12-character SHA suffixes remain supported by `existing-tag`; their new DMG
+filenames also use the first 8 characters. Versioned releases use
+`Actrium-<tag>.dmg`, for example `Actrium-v0.10.7.dmg`, and its `.sha256` file.
+
+Both paths call `.github/workflows/_actrium-macos-release.yml`; they do not
+invoke SDK, CLI, or Loran publishing. Release Train calls that same reusable
+workflow after creating its release and includes the DMG result in its
+consolidated report. A train `dry_run` builds and verifies the DMG, saves it
+as an Actions artifact, and performs no tag or release writes. Actions also
+retain build provenance (`actrium-build.json`) and the packaging log.
+
+### Install and verify an unsigned snapshot
+
+These first-release images support **Apple Silicon and macOS 26.1 or later**.
+They have no Developer ID signature or Apple notarization. macOS Gatekeeper
+may refuse to open them, and organization policy may prevent an override.
+After verifying a download you trust, mount the DMG, drag `Actrium.app` onto
+the `Applications` link, and use **System Settings → Privacy & Security →
+Open Anyway** if macOS offers it. Do not disable Gatekeeper globally.
+
+Download both attachments into the same directory and check integrity:
+
+```sh
+shasum -a 256 -c Actrium-*.dmg.sha256
+```
+
+The workflow mounts the final read-only image and verifies the app and
+`/Applications` link, app and renderer versions/build numbers, arm64
+executables, minimum macOS version, and the bundled JavaScript before writing
+the SHA-256 file. A checksum verifies download integrity, not publisher
+identity. Unsigned snapshots can repeatedly prompt for Realm Keychain access
+after replacement; use a local build with a stable signing identity for
+interactive Realm credentials as described above.
